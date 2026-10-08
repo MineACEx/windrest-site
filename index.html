@@ -45,6 +45,8 @@
   --glow:rgba(255,255,255,.022);
   --head:rgba(8,9,13,.62);
   --head-solid:rgba(8,9,13,.88);
+  /* 弹窗面板：比遮罩亮得多，保证正文可读 */
+  --panel-modal:rgba(40,45,60,.97);
   --cyan:#55FFFF;
   --blue:#8FCBFF;
   --violet:#C9A0FF;
@@ -74,6 +76,7 @@
   --glow:rgba(14,18,32,.05);
   --head:rgba(234,238,246,.62);
   --head-solid:rgba(234,238,246,.85);
+  --panel-modal:rgba(255,255,255,.98);
   --cyan:#0a7c8c;
   --blue:#2560b8;
   --violet:#6b3fd4;
@@ -120,7 +123,7 @@ body::after{
    胶囊元素（border-radius:999px）加 corner-shape 后，两端变成超椭圆"帽"。
 */
 .card,.rule,.dl,.step,.statusbar,.eyebrow,.btn,.themebtn,.tag,.ico,.num,
-.announce,.ann-head,.ann-body,.nav-links a,code,h1 .g{
+.ann-panel,.ann-head,.ann-tag,.ann-toggle,.ann-close,.ann-noask input,.nav-links a,code,h1 .g{
   corner-shape:var(--corner-sq);
 }
 .dot{border-radius:50%;corner-shape:var(--corner-sq)}
@@ -306,10 +309,11 @@ section{padding:56px 0}
   position:relative;width:100%;max-width:520px;max-height:80vh;
   display:flex;flex-direction:column;
   border:1px solid var(--line-hi);border-radius:var(--r);
-  background:var(--panel-hi);
-  backdrop-filter:blur(22px) saturate(160%);
-  -webkit-backdrop-filter:blur(22px) saturate(160%);
-  box-shadow:0 24px 70px -22px rgba(0,0,0,.65);
+  /* 弹窗面板用独立底色：必须明显亮于遮罩，否则压在暗背景上看不清 */
+  background:var(--panel-modal);
+  backdrop-filter:blur(20px) saturate(160%);
+  -webkit-backdrop-filter:blur(20px) saturate(160%);
+  box-shadow:0 30px 80px -24px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04) inset;
   opacity:0;transform:translateY(14px) scale(.965);
   transition:opacity 240ms var(--ease-soft),transform 380ms var(--ease-rebound);
 }
@@ -349,15 +353,22 @@ section{padding:56px 0}
 }
 .ann-noask input{
   appearance:none;-webkit-appearance:none;flex:none;
-  width:17px;height:17px;margin:0;cursor:pointer;
+  width:17px;height:17px;margin:0;cursor:pointer;position:relative;
   border:1px solid var(--line-hi);border-radius:6px;background:transparent;
   corner-shape:var(--corner-sq);
   transition:border-color var(--t-fast) var(--ease-soft),background var(--t-fast) var(--ease-soft);
 }
 .ann-noask input:hover{border-color:var(--fg-faint)}
-.ann-noask input:checked{
-  background:linear-gradient(96deg,rgba(85,255,255,.5),rgba(201,160,255,.5));
-  border-color:rgba(143,203,255,.55);
+/* 选中：纯色描边 + 勾选标记（勾用伪元素画，避免渐变填充糊成一块） */
+.ann-noask input:checked{border-color:var(--blue)}
+.ann-noask input:checked::after{
+  content:"";position:absolute;
+  left:4px;top:1px;width:5px;height:9px;
+  border-right:2px solid var(--blue);
+  border-bottom:2px solid var(--blue);
+  border-radius:0 0 1.5px 0;
+  transform:rotate(45deg);
+  corner-shape:var(--corner-sq);
 }
 .ann-noask input:active{transform:scale(.92)}
 .ann-close{
