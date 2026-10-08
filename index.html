@@ -62,7 +62,7 @@
   --gold:#FFD966;
   --green:#5ce68a;
   --red:#ff5555;
-  --r:28px;
+  --r:34px;          /* 大卡片圆角（G2 超椭圆）：基数越大，曲率过渡越明显 */
   /* G2 连续曲率圆角（超椭圆 / squircle）：曲率从直边 0 平滑升到峰值再归零 */
   --corner-sq:squircle;
   /* 缓动：先快后慢再回弹 */
@@ -158,8 +158,8 @@ header{
   -webkit-backdrop-filter:blur(16px) saturate(170%);
   background:var(--head);
   border-bottom:1px solid transparent;
-  transition:border-color var(--t) var(--ease-soft),background var(--t) var(--ease-soft),
-             padding var(--t) var(--ease-soft),backdrop-filter var(--t) var(--ease-soft);
+  transition:border-color 220ms var(--ease-out),background 220ms var(--ease-out),
+             backdrop-filter 220ms var(--ease-out);
 }
 /* 停在页面最上方：顶栏完全融进背景 —— 透明、无边框、无模糊 */
 header:not(.scrolled){
@@ -179,7 +179,8 @@ header.scrolled{
 .nav{
   display:flex;align-items:center;gap:18px;
   height:72px;                      /* 展开态高度 */
-  transition:height 320ms var(--ease-soft);
+  /* 先快后慢：走 ease-out 曲线，220ms 完成（原来的 320ms 偏拖沓） */
+  transition:height 220ms var(--ease-out);
 }
 /* 停在顶部时收缩：TAB 沉进页面，不占视觉重量 */
 header:not(.scrolled) .nav{height:60px}
@@ -188,8 +189,8 @@ header:not(.scrolled) .nav{height:60px}
 .brand img{width:32px;height:32px;display:block;object-fit:contain}
 
 /* 顶部沉浸态：品牌与图标同步收缩（放在原规则之后，确保覆盖生效） */
-.brand{transition:font-size 320ms var(--ease-soft),gap 320ms var(--ease-soft)}
-.brand img{transition:width 320ms var(--ease-soft),height 320ms var(--ease-soft)}
+.brand{transition:font-size 220ms var(--ease-out),gap 220ms var(--ease-out)}
+.brand img{transition:width 220ms var(--ease-out),height 220ms var(--ease-out)}
 header:not(.scrolled) .brand{font-size:15px;gap:9px}
 header:not(.scrolled) .brand img{width:28px;height:28px}
 .brand .grad{
@@ -199,20 +200,20 @@ header:not(.scrolled) .brand img{width:28px;height:28px}
 .nav-links{display:flex;gap:2px;margin-left:auto;align-items:center}
 .nav-links a{
   color:var(--fg-dim);text-decoration:none;font-size:13.5px;font-weight:500;
-  padding:8px 13px;border-radius:11px;
+  padding:8px 13px;border-radius:13px;
   transition:color var(--t-fast) var(--ease-soft);
 }
 .nav-links a:hover{color:var(--fg)}
 
 /* 顶部沉浸态：导航项同步收缩（放在原规则之后，确保覆盖生效） */
-.nav-links a{transition:color var(--t-fast) var(--ease-soft),padding 320ms var(--ease-soft)}
+.nav-links a{transition:color var(--t-fast) var(--ease-soft),padding 220ms var(--ease-out)}
 header:not(.scrolled) .nav-links a{padding:6px 11px}
 
 /* 主题切换按钮 */
 .themebtn{
   margin-left:6px;width:34px;height:34px;flex:none;
   display:grid;place-items:center;cursor:pointer;
-  border:1px solid var(--line-hi);border-radius:13px;
+  border:1px solid var(--line-hi);border-radius:15px;
   background:transparent;color:var(--fg-dim);padding:0;
   transition:color var(--t-fast) var(--ease-soft),border-color var(--t-fast) var(--ease-soft);
 }
@@ -234,7 +235,7 @@ header:not(.scrolled) .nav-links a{padding:6px 11px}
 .statusbar{
   display:flex;align-items:center;gap:14px;flex-wrap:wrap;
   margin-top:22px;padding:13px 18px;
-  border:1px solid var(--line);border-radius:22px;
+  border:1px solid var(--line);border-radius:var(--r);
   background:var(--panel);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   font-size:13.5px;
@@ -276,7 +277,7 @@ h1 .g{
 .cta{display:flex;gap:11px;flex-wrap:wrap;margin-top:32px}
 .btn{
   display:inline-flex;align-items:center;gap:9px;
-  padding:12px 22px;border-radius:17px;border:1px solid var(--line-hi);
+  padding:12px 22px;border-radius:19px;border:1px solid var(--line-hi);
   background:transparent;color:var(--fg);
   font-size:14px;font-weight:600;text-decoration:none;cursor:pointer;
   font-family:inherit;
@@ -319,7 +320,7 @@ section{padding:56px 0}
 .card h3{font-size:15.5px;font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:9px}
 .card p{color:var(--fg-dim);font-size:14px;line-height:1.72}
 .card .ico{
-  width:32px;height:32px;border-radius:12px;flex:none;
+  width:32px;height:32px;border-radius:14px;flex:none;
   display:grid;place-items:center;font-size:15px;
   border:1px solid var(--line);
 }
@@ -328,12 +329,12 @@ section{padding:56px 0}
 .rules{display:grid;gap:11px;margin-top:6px}
 .rule{
   display:flex;gap:14px;align-items:flex-start;
-  padding:18px 20px;border-radius:20px;
+  padding:18px 20px;border-radius:calc(var(--r) - 6px);
   border:1px solid var(--line);background:var(--panel);
   transition:border-color var(--t) var(--ease-soft);
 }
 .rule .num{
-  flex:none;width:28px;height:28px;border-radius:11px;
+  flex:none;width:28px;height:28px;border-radius:13px;
   display:grid;place-items:center;font-size:12.5px;font-weight:750;
   font-family:ui-monospace,monospace;
 }
@@ -395,7 +396,7 @@ html[data-loading="1"] .ann-modal{display:none}
   border:1px solid var(--line);background:var(--panel);
 }
 .sk-row{display:flex;align-items:center;gap:16px;padding:20px 22px;
-  border-radius:22px;border:1px solid var(--line);background:var(--panel)}
+  border-radius:var(--r);border:1px solid var(--line);background:var(--panel)}
 .sk-icon{width:46px;height:46px;border-radius:15px;flex:none}
 .sk-stack{flex:1;display:grid;gap:9px;min-width:0}
 .sk-pill{width:76px;height:26px;border-radius:999px;flex:none}
@@ -403,8 +404,8 @@ html[data-loading="1"] .ann-modal{display:none}
 .sk-grid.g2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 .sk-grid.g3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 .sk-num{width:28px;height:28px;border-radius:11px;flex:none}
-.sk-step{display:flex;gap:15px;padding:17px 20px;
-  border-radius:20px;border:1px solid var(--line)}
+.sk-step{display:flex;gap:15px;padding:18px 20px;
+  border-radius:calc(var(--r) - 6px);border:1px solid var(--line)}
 
 /* ============ 公告弹窗 ============
    压暗遮罩 + 面板：面板用 opacity/transform 做先快后慢微回弹。
@@ -449,7 +450,7 @@ html[data-loading="1"] .ann-modal{display:none}
 .ann-title{flex:1;min-width:0;font-size:15.5px;font-weight:700}
 .ann-toggle{
   flex:none;width:30px;height:30px;display:grid;place-items:center;
-  border:1px solid var(--line-hi);border-radius:11px;background:transparent;
+  border:1px solid var(--line-hi);border-radius:14px;background:transparent;
   color:var(--fg-dim);cursor:pointer;padding:0;font-size:15px;line-height:1;
   corner-shape:var(--corner-sq);
   transition:color var(--t-fast) var(--ease-soft),border-color var(--t-fast) var(--ease-soft),transform 180ms var(--ease-rebound);
@@ -508,7 +509,7 @@ html[data-loading="1"] .ann-modal{display:none}
 .ann-noask input:active{transform:scale(.92)}
 .ann-close{
   flex:none;display:inline-flex;align-items:center;gap:7px;
-  padding:9px 20px;border-radius:15px;
+  padding:9px 20px;border-radius:18px;
   border:1px solid rgba(143,203,255,.4);
   background:linear-gradient(96deg,rgba(85,255,255,.16),rgba(201,160,255,.16));
   color:var(--fg);font-size:13.5px;font-weight:660;font-family:inherit;cursor:pointer;
@@ -546,7 +547,7 @@ html[data-loading="1"] .ann-modal{display:none}
 .ann-body hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 .ann-body pre{
   margin:13px 0;padding:13px 16px;overflow-x:auto;
-  border:1px solid var(--line);border-radius:16px;background:var(--panel-hi);
+  border:1px solid var(--line);border-radius:19px;background:var(--panel-hi);
   corner-shape:var(--corner-sq);
 }
 .ann-body pre code{
@@ -558,7 +559,7 @@ html[data-loading="1"] .ann-modal{display:none}
 /* ============ 下载 ============ */
 .dl{
   display:flex;align-items:center;gap:16px;
-  padding:20px 22px;border-radius:22px;
+  padding:20px 22px;border-radius:var(--r);
   border:1px solid var(--line);background:var(--panel);
   text-decoration:none;color:inherit;
   transition:border-color var(--t) var(--ease-soft);
@@ -590,7 +591,7 @@ html[data-loading="1"] .ann-modal{display:none}
 .dl[data-dl="1"]:hover .arrow{transform:none}
 /* 平台徽标 */
 .dl[data-dl="1"] .plat{
-  flex:none;width:46px;height:46px;border-radius:15px;
+  flex:none;width:46px;height:46px;border-radius:18px;
   display:grid;place-items:center;
   border:1px solid var(--line-hi);color:var(--blue);
   background:linear-gradient(150deg,rgba(143,203,255,.13),rgba(201,160,255,.09));
@@ -602,7 +603,7 @@ html[data-loading="1"] .ann-modal{display:none}
 /* 下载动作按钮：hover 点亮作交互指引 */
 .dl[data-dl="1"] .get{
   flex:none;display:inline-flex;align-items:center;gap:7px;
-  padding:10px 17px;border-radius:15px;
+  padding:10px 17px;border-radius:18px;
   border:1px solid rgba(143,203,255,.32);
   background:linear-gradient(96deg,rgba(85,255,255,.12),rgba(201,160,255,.12));
   font-size:13.5px;font-weight:660;color:var(--fg);
@@ -627,12 +628,15 @@ html[data-loading="1"] .ann-modal{display:none}
 }
 
 /* ============ 步骤 ============ */
-.steps{counter-reset:s;display:grid;gap:10px}
+.steps{counter-reset:s;display:grid;gap:16px}
 .step{
   display:flex;gap:15px;align-items:flex-start;
-  padding:17px 20px;border-radius:20px;border:1px solid var(--line);
-  transition:border-color var(--t) var(--ease-soft);
+  padding:18px 20px;border-radius:var(--r);
+  border:1px solid var(--line);background:var(--panel);
+  backdrop-filter:blur(11px);-webkit-backdrop-filter:blur(11px);
+  transition:border-color var(--t) var(--ease-soft),background var(--t) var(--ease-soft);
 }
+.step:hover{border-color:var(--line-hi)}
 .step::before{
   counter-increment:s;content:counter(s,decimal-leading-zero);
   font-family:ui-monospace,monospace;font-size:12px;font-weight:700;
