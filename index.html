@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>风栖原 · Windrest — 半仿 2b2t 无规则生存服</title>
+<meta name="description" content="风栖原 Windrest —— 半仿 2b2t 的无规则生存服务器。想做什么都可以，除开挂和攻击服务器。Fabric 1.21.11。">
+<link rel="icon" href="assets/icon.png">
+<script>
+/* 预置主题：在 CSS 生效前确定主题，避免刷新时闪一下
+   优先级：用户手动选择 > 系统偏好 */
+(function(){
+  var t = null;
+  /* 1. URL 参数 ?theme=light|dark 优先级最高（可分享指定主题的链接） */
+  try{
+    var m = location.search.match(/[?&]theme=(light|dark)\b/);
+    if(m){ t = m[1]; }
+  }catch(e){}
+  /* 2. 用户上次手动选择 */
+  if(!t){
+    try{
+      var saved = localStorage.getItem('wr-theme');
+      if(saved === 'light' || saved === 'dark'){ t = saved; }
+    }catch(e){}
+  }
+  /* 3. 系统偏好 */
+  if(!t){
+    try{
+      t = (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+    }catch(e){ t = 'dark'; }
+  }
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+<style>
+:root{
+  --bg:#08090d;
+  --panel:rgba(22,25,34,.72);
+  --panel-hi:rgba(32,36,48,.9);
+  --line:rgba(255,255,255,.08);
+  --line-hi:rgba(255,255,255,.16);
+  --fg:#eef0f6;
+  --fg-dim:#9aa1b4;
+  --fg-faint:#5d6478;
+  --glow:rgba(255,255,255,.022);
+  --head:rgba(8,9,13,.62);
+  --head-solid:rgba(8,9,13,.88);
+  --cyan:#55FFFF;
+  --blue:#8FCBFF;
+  --violet:#C9A0FF;
+  --gold:#FFD966;
+  --green:#5ce68a;
+  --red:#ff5555;
+  --r:28px;
+  /* G2 连续曲率圆角（超椭圆 / squircle）：曲率从直边 0 平滑升到峰值再归零 */
+  --corner-sq:squircle;
+  /* 缓动：先快后慢再回弹 */
+  --ease-rebound:cubic-bezier(.34,1.56,.64,1);
+  --ease-out:cubic-bezier(.23,1,.32,1);
+  --ease-soft:cubic-bezier(.4,0,.2,1);
+  --t-fast:170ms;
+  --t:260ms;
+}
+[data-theme="light"]{
+  /* 亮色：卡片半透明，透出背后的彩色渐晕 */
+  --bg:#eaeef6;
+  --panel:rgba(255,255,255,.34);
+  --panel-hi:rgba(255,255,255,.5);
+  --line:rgba(14,18,32,.18);
+  --line-hi:rgba(14,18,32,.32);
+  --fg:#0b0e16;
+  --fg-dim:#424a5b;
+  --fg-faint:#727b8e;
+  --glow:rgba(14,18,32,.05);
+  --head:rgba(234,238,246,.62);
+  --head-solid:rgba(234,238,246,.85);
+  --cyan:#0a7c8c;
+  --blue:#2560b8;
+  --violet:#6b3fd4;
+  --gold:#8a6205;
+  --green:#0d7a37;
+  --red:#c11f1f;
+}
+/* 亮色下把背景渐晕调浓，半透明卡片才透得出颜色 */
+[data-theme="light"] body::before{
+  background:
+    radial-gradient(900px 520px at 12% -8%, rgba(56,200,230,.34), transparent 62%),
+    radial-gradient(760px 480px at 88% 4%, rgba(170,130,255,.32), transparent 60%),
+    radial-gradient(700px 620px at 50% 108%, rgba(255,200,90,.20), transparent 62%);
+}
+*{box-sizing:border-box;margin:0;padding:0;min-width:0}
+img,svg,video{max-width:100%;height:auto}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--fg);
+  font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  transition:background var(--t) var(--ease-soft),color var(--t) var(--ease-soft);
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(900px 520px at 12% -8%, rgba(85,255,255,.10), transparent 62%),
+    radial-gradient(760px 480px at 88% 4%, rgba(201,160,255,.11), transparent 60%),
+    radial-gradient(700px 620px at 50% 108%, rgba(255,217,102,.05), transparent 62%);
+  transition:opacity var(--t) var(--ease-soft);
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(var(--glow) 1px,transparent 1px),
+                   linear-gradient(90deg,var(--glow) 1px,transparent 1px);
+  background-size:52px 52px;
+  mask-image:radial-gradient(ellipse 78% 62% at 50% 34%,#000,transparent 76%);
+  -webkit-mask-image:radial-gradient(ellipse 78% 62% at 50% 34%,#000,transparent 76%);
+}
+/* ============ G2 平滑圆角（全站统一） ============
+   border-radius 只保证 G1（切线连续），角部曲率从 0 突跳到 1/r 会显生硬。
+   corner-shape: squircle 把角部换成超椭圆，达到 G2（曲率连续）。
+   胶囊元素（border-radius:999px）加 corner-shape 后，两端变成超椭圆"帽"。
+*/
+.card,.rule,.dl,.step,.statusbar,.eyebrow,.btn,.themebtn,.tag,.ico,.num,
+.nav-links a,code,h1 .g{
+  corner-shape:var(--corner-sq);
+}
+.dot{border-radius:50%;corner-shape:var(--corner-sq)}
+
+.wrap{max-width:1080px;margin-inline:auto;padding-inline:20px}
+
+/* ============ 顶部 ============ */
+header{
+  position:sticky;top:0;z-index:50;
+  backdrop-filter:blur(18px) saturate(150%);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);
+  background:var(--head);
+  border-bottom:1px solid transparent;
+  transition:border-color var(--t) var(--ease-soft),background var(--t) var(--ease-soft);
+}
+header.scrolled{border-bottom-color:var(--line);background:var(--head-solid)}
+.nav{display:flex;align-items:center;gap:18px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.2px;font-size:16px;text-decoration:none;color:inherit}
+/* 图标：透明通道，不加框 */
+.brand img{width:32px;height:32px;display:block;object-fit:contain}
+.brand .grad{
+  background:linear-gradient(96deg,var(--cyan),var(--blue) 42%,var(--violet));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.nav-links{display:flex;gap:2px;margin-left:auto;align-items:center}
+.nav-links a{
+  color:var(--fg-dim);text-decoration:none;font-size:13.5px;font-weight:500;
+  padding:8px 13px;border-radius:11px;
+  transition:color var(--t-fast) var(--ease-soft);
+}
+.nav-links a:hover{color:var(--fg)}
+/* 主题切换按钮 */
+.themebtn{
+  margin-left:6px;width:34px;height:34px;flex:none;
+  display:grid;place-items:center;cursor:pointer;
+  border:1px solid var(--line-hi);border-radius:13px;
+  background:transparent;color:var(--fg-dim);padding:0;
+  transition:color var(--t-fast) var(--ease-soft),border-color var(--t-fast) var(--ease-soft);
+}
+.themebtn:hover{color:var(--fg);border-color:var(--fg-faint)}
+.themebtn svg{width:16px;height:16px;display:block}
+.themebtn .moon{display:none}
+[data-theme="light"] .themebtn .sun{display:none}
+[data-theme="light"] .themebtn .moon{display:block}
+@media(max-width:700px){
+  .nav{gap:10px;height:auto;padding-block:11px;flex-wrap:nowrap}
+  .nav-links{gap:0;margin-left:auto}
+  .nav-links a{padding:7px 8px;font-size:12.5px}
+  .brand{font-size:14.5px}
+  .brand img{width:27px;height:27px}
+  .nav-links a[href="#about"],.nav-links a[href="#rules"]{display:none}
+}
+
+/* ============ 状态条 ============ */
+.statusbar{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  margin-top:22px;padding:13px 18px;
+  border:1px solid var(--line);border-radius:22px;
+  background:var(--panel);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  font-size:13.5px;
+  transition:border-color var(--t) var(--ease-soft),background var(--t) var(--ease-soft);
+}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--fg-faint);flex:none}
+.dot.on{background:var(--green);animation:pulse 2.4s var(--ease-soft) infinite}
+.dot.off{background:var(--red)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(92,230,138,.5)}70%{box-shadow:0 0 0 9px rgba(92,230,138,0)}100%{box-shadow:0 0 0 0 rgba(92,230,138,0)}}
+.statusbar b{font-weight:650}
+.statusbar .sep{color:var(--fg-faint)}
+.statusbar .iptag{
+  margin-left:auto;display:flex;align-items:center;gap:9px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;color:var(--fg-dim);
+}
+@media(max-width:760px){.statusbar .iptag{margin-left:0;width:100%}}
+
+/* ============ 英雄区 ============ */
+.hero{padding:76px 0 54px}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:11.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--fg-dim);
+  border:1px solid var(--line-hi);border-radius:999px;
+  padding:6px 13px;margin-bottom:22px;
+  transition:border-color var(--t) var(--ease-soft);
+}
+.eyebrow .sp{width:5px;height:5px;border-radius:50%;background:var(--violet)}
+h1{
+  font-size:clamp(38px,7.4vw,74px);line-height:1.02;letter-spacing:-.035em;font-weight:850;
+  margin-bottom:20px;
+}
+h1 .g{
+  background:linear-gradient(96deg,var(--cyan),var(--blue) 38%,var(--violet));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero p.lead{font-size:17px;color:var(--fg-dim);max-width:60ch;line-height:1.8}
+.hero p.lead strong{color:var(--fg);font-weight:600}
+.cta{display:flex;gap:11px;flex-wrap:wrap;margin-top:32px}
+.btn{
+  display:inline-flex;align-items:center;gap:9px;
+  padding:12px 22px;border-radius:17px;border:1px solid var(--line-hi);
+  background:transparent;color:var(--fg);
+  font-size:14px;font-weight:600;text-decoration:none;cursor:pointer;
+  font-family:inherit;
+  transition:border-color var(--t-fast) var(--ease-soft),color var(--t-fast) var(--ease-soft),opacity var(--t-fast) var(--ease-soft);
+}
+.btn:hover{border-color:var(--fg-faint)}
+.btn.primary{
+  background:linear-gradient(96deg,rgba(85,255,255,.14),rgba(201,160,255,.14));
+  border-color:rgba(143,203,255,.36);
+}
+.btn.primary:hover{border-color:rgba(143,203,255,.7)}
+[data-theme="light"] .btn.primary{
+  background:linear-gradient(96deg,rgba(13,157,176,.1),rgba(130,87,230,.1));
+  border-color:rgba(59,127,212,.4);
+}
+
+/* ============ 区块 ============ */
+section{padding:56px 0}
+.shead{margin-bottom:30px}
+.shead h2{font-size:clamp(23px,3.6vw,32px);letter-spacing:-.02em;font-weight:780;margin-bottom:9px}
+.shead p{color:var(--fg-dim);font-size:14.5px;max-width:62ch}
+.stag{
+  display:inline-block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--violet);margin-bottom:11px;
+}
+
+/* ============ 卡片 ============ */
+.grid{display:grid;gap:13px}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:860px){.g3{grid-template-columns:1fr}}
+@media(max-width:680px){.g2{grid-template-columns:1fr}}
+.card{
+  border:1px solid var(--line);border-radius:var(--r);
+  background:var(--panel);padding:22px;
+  backdrop-filter:blur(11px);-webkit-backdrop-filter:blur(11px);
+  transition:border-color var(--t) var(--ease-soft),background var(--t) var(--ease-soft);
+}
+.card:hover{border-color:var(--line-hi)}
+.card h3{font-size:15.5px;font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:9px}
+.card p{color:var(--fg-dim);font-size:14px;line-height:1.72}
+.card .ico{
+  width:32px;height:32px;border-radius:12px;flex:none;
+  display:grid;place-items:center;font-size:15px;
+  border:1px solid var(--line);
+}
+
+/* ============ 规则 ============ */
+.rules{display:grid;gap:11px;margin-top:6px}
+.rule{
+  display:flex;gap:14px;align-items:flex-start;
+  padding:18px 20px;border-radius:20px;
+  border:1px solid var(--line);background:var(--panel);
+  transition:border-color var(--t) var(--ease-soft);
+}
+.rule .num{
+  flex:none;width:28px;height:28px;border-radius:11px;
+  display:grid;place-items:center;font-size:12.5px;font-weight:750;
+  font-family:ui-monospace,monospace;
+}
+.rule.no .num{border:1px solid rgba(255,85,85,.3);color:var(--red)}
+.rule.yes .num{border:1px solid rgba(92,230,138,.3);color:var(--green)}
+.rule div{flex:1}
+.rule h4{font-size:14.5px;font-weight:660;margin-bottom:4px}
+.rule p{color:var(--fg-dim);font-size:13.5px;line-height:1.68}
+
+/* ============ 下载 ============ */
+.dl{
+  display:flex;align-items:center;gap:16px;
+  padding:20px 22px;border-radius:22px;
+  border:1px solid var(--line);background:var(--panel);
+  text-decoration:none;color:inherit;
+  transition:border-color var(--t) var(--ease-soft);
+}
+.dl:hover{border-color:var(--line-hi)}
+.dl .meta{flex:1;min-width:0}
+.dl .meta b{display:block;font-size:15px;font-weight:680;margin-bottom:3px}
+.dl .meta span{color:var(--fg-dim);font-size:13px}
+.dl .tag{
+  font-size:11px;font-weight:650;padding:4px 10px;border-radius:999px;
+  border:1px solid var(--line-hi);color:var(--fg-dim);white-space:nowrap;
+}
+.dl .arrow{color:var(--fg-faint);font-size:17px;transition:transform var(--t) var(--ease-rebound),color var(--t-fast) var(--ease-soft)}
+.dl:hover .arrow{transform:translateX(4px);color:var(--blue)}
+.dl[data-pending="1"]{opacity:.6;cursor:not-allowed}
+.dl[data-pending="1"]:hover{border-color:var(--line)}
+.dl[data-pending="1"]:hover .arrow{transform:none;color:var(--fg-faint)}
+
+/* ============ 步骤 ============ */
+.steps{counter-reset:s;display:grid;gap:10px}
+.step{
+  display:flex;gap:15px;align-items:flex-start;
+  padding:17px 20px;border-radius:20px;border:1px solid var(--line);
+  transition:border-color var(--t) var(--ease-soft);
+}
+.step::before{
+  counter-increment:s;content:counter(s,decimal-leading-zero);
+  font-family:ui-monospace,monospace;font-size:12px;font-weight:700;
+  color:var(--violet);flex:none;padding-top:2px;min-width:22px;
+}
+.step h4{font-size:14.5px;font-weight:660;margin-bottom:4px}
+.step p{color:var(--fg-dim);font-size:13.5px;line-height:1.68}
+code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:12.5px;padding:2px 8px;border-radius:8px;
+  background:rgba(128,140,170,.16);border:1px solid var(--line);
+  color:var(--violet);white-space:nowrap;
+  display:inline-block;max-width:100%;overflow-x:auto;vertical-align:middle;
+}
+
+/* ============ 页脚 ============ */
+footer{
+  margin-top:52px;padding:32px 0 44px;border-top:1px solid var(--line);
+  color:var(--fg-faint);font-size:13px;
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+}
+footer a{color:var(--fg-dim);text-decoration:none;transition:color var(--t-fast) var(--ease-soft)}
+footer a:hover{color:var(--fg)}
+
+/* ============ 进场动画 ============
+   只用 transition，不用 keyframes：可打断 → 中断点继续（跟手）
+   所有元素并行，无错峰延迟
+   曲线先快后慢再回弹
+*/
+.rise{
+  opacity:0;transform:translateY(18px);
+  transition:opacity 420ms var(--ease-soft),transform 520ms var(--ease-rebound);
+}
+.rise.in{opacity:1;transform:none}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .rise{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<header id="hdr">
+  <div class="wrap nav">
+    <a class="brand" href="#top">
+      <img src="assets/icon.png" data-live-icon alt="风栖原图标" onerror="this.style.display='none'">
+      <span class="grad">风栖原</span>
+      <span style="color:var(--fg-faint);font-weight:600">Windrest</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#about">关于</a>
+      <a href="#rules">规则</a>
+      <a href="#join">进服</a>
+      <a href="#download">下载</a>
+      <button class="themebtn" id="themebtn" type="button" aria-label="切换明暗主题" title="切换明暗主题">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.5A8.6 8.6 0 1 1 9.5 3.5a7 7 0 0 0 11 11Z"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+
+  <!-- 实时状态 -->
+  <div class="statusbar" id="statusbar">
+    <span class="dot" id="dot"></span>
+    <b id="st-text">正在获取服务器状态…</b>
+    <span class="sep" id="st-sep" hidden>·</span>
+    <span id="st-players" hidden></span>
+    <span class="sep" id="st-sep2" hidden>·</span>
+    <span id="st-version" hidden></span>
+    <span class="iptag" id="st-ip"></span>
+  </div>
+
+  <!-- 英雄区 -->
+  <div class="hero">
+    <div class="eyebrow rise"><span class="sp"></span><span id="hero-tag"></span></div>
+    <h1 class="rise"><span class="g" id="hero-cn"></span><br><span id="hero-en"></span></h1>
+    <p class="lead rise" id="hero-lead"></p>
+    <div class="cta rise">
+      <a class="btn primary" href="#join">开始进服 <span>→</span></a>
+      <a class="btn" href="#download">下载整合包</a>
+    </div>
+  </div>
+
+  <!-- 关于 -->
+  <section id="about">
+    <div class="shead rise">
+      <span class="stag">About</span>
+      <h2 id="about-title"></h2>
+      <p id="about-desc"></p>
+    </div>
+    <div class="grid g3" id="about-cards"></div>
+  </section>
+
+  <!-- 规则 -->
+  <section id="rules">
+    <div class="shead rise">
+      <span class="stag">Rules</span>
+      <h2 id="rules-banned-title"></h2>
+      <p id="rules-banned-desc"></p>
+    </div>
+
+    <div class="rules" id="rules-banned"></div>
+
+    <div class="shead rise" style="margin-top:40px;margin-bottom:22px">
+      <h2 style="font-size:20px" id="rules-allowed-title"></h2>
+    </div>
+    <div class="grid g2" id="rules-allowed"></div>
+  </section>
+
+  <!-- 进服 -->
+  <section id="join">
+    <div class="shead rise">
+      <span class="stag">Join</span>
+      <h2 id="join-title"></h2>
+      <p id="join-desc"></p>
+    </div>
+    <div class="steps" id="join-steps"></div>
+  </section>
+
+  <!-- 下载 -->
+  <section id="download">
+    <div class="shead rise">
+      <span class="stag">Download</span>
+      <h2 id="download-title"></h2>
+      <p id="download-desc"></p>
+    </div>
+    <div class="grid g2" id="dl-list"></div>
+  </section>
+
+  <!-- 社区 -->
+  <section id="community">
+    <div class="shead rise">
+      <span class="stag">Community</span>
+      <h2 id="community-title"></h2>
+      <p id="community-desc"></p>
+    </div>
+    <div class="grid g2" id="community-list"></div>
+  </section>
+
+  <footer>
+    <span id="foot-left"></span>
+    <span id="foot-meta"></span>
+  </footer>
+
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- 顶栏滚动态 ---------- */
+  var hdr = document.getElementById('hdr');
+  var onScroll = function(){ hdr.classList.toggle('scrolled', window.scrollY > 8); };
+  onScroll();
+  addEventListener('scroll', onScroll, {passive:true});
+
+  /* ---------- 进场动画 ---------- */
+  var els = document.querySelectorAll('.rise');
+  var io = null;
+  if('IntersectionObserver' in window){
+    /* 并行：所有进入视口的元素同时开始，不做错峰延迟 */
+    io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){
+          en.target.classList.add('in');
+          io.unobserve(en.target);
+        }
+      });
+    }, {rootMargin:'0px 0px -8% 0px', threshold:0.05});
+    els.forEach(function(el){ io.observe(el); });
+  } else {
+    els.forEach(function(el){ el.classList.add('in'); });
+  }
+
+  /* ---------- 明暗主题切换 ---------- */
+  var tbtn = document.getElementById('themebtn');
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    try{ localStorage.setItem('wr-theme', t); }catch(e){}
+  }
+  if(tbtn){
+    tbtn.addEventListener('click', function(){
+      var now = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      applyTheme(now);
+    });
+  }
+  /* 跟随系统：用户没手动选过时，系统换主题本站也跟着换 */
+  try{
+    if(window.matchMedia && !localStorage.getItem('wr-theme')){
+      matchMedia('(prefers-color-scheme: light)').addEventListener('change', function(ev){
+        applyTheme(ev.matches ? 'light' : 'dark');
+      });
+    }
+  }catch(e){}
+
+  /* ---------- 读取配置 ----------
+     links.json  —— 你平时只需要改这个（下载链接 / QQ群 / Discord）
+     content.json —— 页面文案内容
+  */
+  function loadJSON(name){
+    return fetch(name, {cache:'no-store'}).then(function(r){
+      if(!r.ok) throw new Error(name + ' HTTP ' + r.status);
+      return r.json();
+    });
+  }
+  var api = function(){
+    return Promise.all([loadJSON('links.json'), loadJSON('content.json')])
+      .then(function(res){
+        var links = res[0] || {}, content = res[1] || {};
+
+        /* 把 links.json 的简写映射成内部结构 */
+        var dl = links['下载链接'] || {};
+        content.download = content.download || {};
+        content.download.items = [
+          { label: '国际线路', desc: 'GitHub / Modrinth 直链', url: dl['国际线路'], tag: '推荐海外' },
+          { label: '国内线路', desc: '蓝奏云 / 阿里云盘',   url: dl['国内线路'], tag: '国内加速' }
+        ];
+
+        var qq = links['QQ群'] || {};
+        var dc = links['Discord'] || {};
+        content.community = content.community || {};
+        content.community.items = [
+          { label: 'QQ 群',  value: qq['群号'] || '',      url: qq['加群链接'] },
+          { label: 'Discord', value: dc['邀请码显示文字'] || '', url: dc['邀请链接'] }
+        ];
+        return content;
+      });
+  };
+
+  /* ---------- 渲染下载区 ---------- */
+  function renderDownloads(dls){
+    var box = document.getElementById('dl-list');
+    if(!box || !dls) return;
+    box.innerHTML = '';
+    dls.forEach(function(d){
+      var pending = !d.url || d.url.indexOf('PLACEHOLDER') === 0;
+      var a = document.createElement('a');
+      a.className = 'dl rise';
+      a.href = pending ? 'javascript:void(0)' : d.url;
+      if(!pending){ a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      a.setAttribute('data-pending', pending ? '1' : '0');
+      a.innerHTML =
+        '<div class="meta"><b>' + esc(d.label) + '</b><span>' + esc(d.desc||'') + '</span></div>' +
+        (d.tag ? '<span class="tag">' + esc(d.tag) + '</span>' : '') +
+        '<span class="arrow">' + (pending ? '待配置' : '↓') + '</span>';
+      box.appendChild(a);
+      if('IntersectionObserver' in window) io.observe(a); else a.classList.add('in');
+      /* 动态生成的胶囊也要套 G2 */
+      applyPills(a);
+    });
+  }
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* 渲染后把新元素纳入进场动画观察 */
+  function refreshRise(){
+    var list = document.querySelectorAll('.rise:not(.in)');
+    Array.prototype.forEach.call(list, function(el){
+      if(io) io.observe(el);
+      else el.classList.add('in');
+    });
+  }
+
+  /* 是否待配置（值以 PLACEHOLDER 开头） */
+  function isPending(v){
+    return !v || String(v).indexOf('PLACEHOLDER') === 0;
+  }
+
+  /* 允许少量内联 HTML（JSON 里写的 <strong> / <code>）—— 内容源是你自己，安全 */
+  function raw(s){ return String(s == null ? '' : s); }
+
+  function setText(id, v){
+    var el = document.getElementById(id);
+    if(el && v != null){ el.innerHTML = raw(v); }
+  }
+
+  /* ---------- 渲染各区块 ---------- */
+  function renderHero(c){
+    if(!c) return;
+    setText('hero-tag', c.server.tagline);
+    setText('hero-cn', c.server.name_cn);
+    setText('hero-en', c.server.name_en);
+    setText('hero-lead', c.hero.lead);
+  }
+
+  function renderAbout(c){
+    if(!c || !c.about) return;
+    setText('about-title', c.about.title);
+    setText('about-desc', c.about.desc);
+    var box = document.getElementById('about-cards');
+    if(!box) return;
+    box.innerHTML = '';
+    (c.about.cards || []).forEach(function(x){
+      var d = document.createElement('div');
+      d.className = 'card rise';
+      d.innerHTML = '<h3><span class="ico">' + esc(x.icon) + '</span>' + esc(x.title) + '</h3><p>' + esc(x.desc) + '</p>';
+      box.appendChild(d);
+    });
+  }
+
+  function renderRules(c){
+    if(!c || !c.rules) return;
+    setText('rules-banned-title', c.rules.banned_title);
+    setText('rules-banned-desc', c.rules.banned_desc);
+    setText('rules-allowed-title', c.rules.allowed_title);
+
+    var bb = document.getElementById('rules-banned');
+    if(bb){
+      bb.innerHTML = '';
+      (c.rules.banned || []).forEach(function(x, i){
+        var d = document.createElement('div');
+        d.className = 'rule no rise';
+        d.innerHTML = '<span class="num">' + (i < 9 ? '0' : '') + (i + 1) + '</span><div><h4>' + esc(x.title) + '</h4><p>' + esc(x.desc) + '</p></div>';
+        bb.appendChild(d);
+      });
+    }
+    var ab = document.getElementById('rules-allowed');
+    if(ab){
+      ab.innerHTML = '';
+      (c.rules.allowed || []).forEach(function(x){
+        var d = document.createElement('div');
+        d.className = 'card rise';
+        d.innerHTML = '<h3><span class="ico">' + esc(x.icon) + '</span>' + esc(x.title) + '</h3><p>' + esc(x.desc) + '</p>';
+        ab.appendChild(d);
+      });
+    }
+  }
+
+  function renderJoin(c){
+    if(!c || !c.join) return;
+    setText('join-title', c.join.title);
+    setText('join-desc', c.join.desc);
+    var box = document.getElementById('join-steps');
+    if(!box) return;
+    box.innerHTML = '';
+    (c.join.steps || []).forEach(function(x){
+      var d = document.createElement('div');
+      d.className = 'step rise';
+      d.innerHTML = '<div><h4>' + esc(x.title) + '</h4><p>' + raw(x.desc) + '</p></div>';
+      box.appendChild(d);
+    });
+  }
+
+  function renderSectionHead(prefix, o){
+    if(!o) return;
+    setText(prefix + '-title', o.title);
+    setText(prefix + '-desc', o.desc);
+  }
+
+  /* 社区卡片（QQ群 / Discord） */
+  function renderCommunity(c){
+    if(!c || !c.community) return;
+    renderSectionHead('community', c.community);
+    var box = document.getElementById('community-list');
+    if(!box) return;
+    box.innerHTML = '';
+    (c.community.items || []).forEach(function(x){
+      var pending = isPending(x.url);
+      var a = document.createElement('a');
+      a.className = 'dl rise' + (pending ? '' : '');
+      a.href = pending ? 'javascript:void(0)' : x.url;
+      if(!pending){ a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      a.setAttribute('data-pending', pending ? '1' : '0');
+      a.innerHTML =
+        '<div class="meta"><b>' + esc(x.label) + '</b><span>' + esc(x.value || '待补充') + '</span></div>' +
+        '<span class="arrow">' + (pending ? '待配置' : '→') + '</span>';
+      box.appendChild(a);
+      if(io) io.observe(a); else a.classList.add('in');
+      applyPills(a);
+    });
+  }
+
+  /* ---------- 服务器状态 ---------- */
+  var st = {
+    dot:      document.getElementById('dot'),
+    text:     document.getElementById('st-text'),
+    sep:      document.getElementById('st-sep'),
+    players:  document.getElementById('st-players'),
+    sep2:     document.getElementById('st-sep2'),
+    version:  document.getElementById('st-version'),
+    ip:       document.getElementById('st-ip')
+  };
+
+  function show(el, on){ if(el){ el.hidden = !on; } }
+
+  function setStatus(state, data){
+    if(!st.dot) return;
+    st.dot.className = 'dot ' + state;
+    if(state === 'on'){
+      st.text.textContent = '服务器在线';
+      st.text.style.color = 'var(--fg)';
+      if(data.players != null){
+        st.players.textContent = data.players + ' / ' + (data.max || '?') + ' 人在线';
+        show(st.sep, true); show(st.players, true);
+      }
+      if(data.version){
+        st.version.textContent = data.version;
+        show(st.sep2, true); show(st.version, true);
+      }
+    } else if(state === 'off'){
+      st.text.textContent = '服务器离线（可能在维护或重启）';
+      st.text.style.color = 'var(--red)';
+      show(st.sep,false); show(st.players,false); show(st.sep2,false); show(st.version,false);
+    } else if(state === 'unknown'){
+      st.text.textContent = '服务器状态：未公开查询';
+      st.text.style.color = 'var(--fg-dim)';
+      show(st.sep,false); show(st.players,false); show(st.sep2,false); show(st.version,false);
+    } else {
+      st.text.textContent = '状态获取失败（检查网络或稍后重试）';
+      st.text.style.color = 'var(--fg-dim)';
+      show(st.sep,false); show(st.players,false); show(st.sep2,false); show(st.version,false);
+    }
+  }
+
+  /* 用 API 返回的 base64 图标替换本地图标（服务器一改图标，网页自动跟着变） */
+  function setIcon(dataUrl){
+    if(!dataUrl) return;
+    var imgs = document.querySelectorAll('img[data-live-icon]');
+    Array.prototype.forEach.call(imgs, function(el){
+      if(el.src !== dataUrl){ el.src = dataUrl; }
+    });
+    try{ var fav = document.querySelector('link[rel="icon"]'); if(fav){ fav.href = dataUrl; } }catch(e){}
+  }
+
+  function poll(apiUrl){
+    if(!apiUrl) return;
+    fetch(apiUrl, {cache:'no-store'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d){ setStatus('fail', {}); return; }
+        if(d.online){
+          /* mcstatus.io 结构：{online, players:{online,max}, version:{name_clean}, motd:{clean}, icon} */
+          var ver = null;
+          if(d.version && typeof d.version === 'object'){ ver = d.version.name_clean || d.version.name_raw || null; }
+          else if(typeof d.version === 'string'){ ver = d.version; }
+          setStatus('on', {
+            players: d.players && typeof d.players.online === 'number' ? d.players.online : null,
+            max:     d.players ? d.players.max : null,
+            version: ver
+          });
+          /* 图标：mcstatus.io 的 icon 是 data:image/png;base64,... */
+          if(d.icon && typeof d.icon === 'string' && d.icon.indexOf('data:image') === 0){
+            setIcon(d.icon);
+          }
+        } else {
+          setStatus('off', {});
+        }
+      })
+      .catch(function(){ setStatus('fail', {}); });
+  }
+
+  /* ---------- G2 超椭圆胶囊（clip-path: path()）----------
+     胶囊端部是半圆"帽"：直线(κ=0) → 圆弧(κ=1/r) 曲率突跳，G1 而已。
+     corner-shape 只对矩形四角生效，对半圆帽无效，所以端部必须手工生成超椭圆。
+     极坐标：rho(φ) = r / (|cosφ|^n + |sinφ|^n)^(1/n)，n=4 即 G2 经典 squircle。
+  */
+  var PILL_N = 4, PILL_STEPS = 40;
+
+  function pillPath(w, h){
+    var r = h / 2, cx = w - r, cy = r;
+    var d = 'M ' + r.toFixed(1) + ' 0';
+    d += ' L ' + (w - r).toFixed(1) + ' 0';
+    for(var i = 0; i <= PILL_STEPS; i++){
+      var ph = -Math.PI/2 + (i/PILL_STEPS)*Math.PI;
+      var pp = Math.pow(Math.abs(Math.cos(ph)), PILL_N) + Math.pow(Math.abs(Math.sin(ph)), PILL_N);
+      var rho = r / Math.pow(pp, 1/PILL_N);
+      d += ' L ' + (cx + rho*Math.cos(ph)).toFixed(1) + ' ' + (cy + rho*Math.sin(ph)).toFixed(1);
+    }
+    d += ' L ' + r.toFixed(1) + ' ' + h;
+    for(var j = 0; j <= PILL_STEPS; j++){
+      var ph2 = Math.PI/2 + (j/PILL_STEPS)*Math.PI;
+      var p2 = Math.pow(Math.abs(Math.cos(ph2)), PILL_N) + Math.pow(Math.abs(Math.sin(ph2)), PILL_N);
+      var rho2 = r / Math.pow(p2, 1/PILL_N);
+      d += ' L ' + (r + rho2*Math.cos(ph2)).toFixed(1) + ' ' + (cy + rho2*Math.sin(ph2)).toFixed(1);
+    }
+    d += ' Z';
+    return 'path("' + d + '")';
+  }
+
+  function smoothPill(el){
+    var w = el.offsetWidth, h = el.offsetHeight;
+    if(!w || !h) return;
+    var pp = pillPath(w, h);
+    el.style.webkitClipPath = pp;
+    el.style.clipPath = pp;
+  }
+
+  /* 给胶囊元素套用（border-radius:999px 保留作回退） */
+  function applyPills(root){
+    var list = (root || document).querySelectorAll('.eyebrow,.tag');
+    Array.prototype.forEach.call(list, smoothPill);
+  }
+
+  applyPills();
+  if('ResizeObserver' in window){
+    var ro = new ResizeObserver(function(ents){
+      ents.forEach(function(en){ smoothPill(en.target); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.eyebrow,.tag'), function(el){ ro.observe(el); });
+  }
+  addEventListener('resize', function(){ applyPills(); }, {passive:true});
+
+  /* ---------- 初始化 ---------- */
+  api().then(function(cfg){
+    /* 从 JSON 渲染全部文案 */
+    renderHero(cfg);
+    renderAbout(cfg);
+    renderRules(cfg);
+    renderJoin(cfg);
+    renderSectionHead('download', cfg.download);
+    renderDownloads(cfg.download ? cfg.download.items : null);
+    renderCommunity(cfg);
+
+    if(cfg.footer){ setText('foot-left', cfg.footer.left); }
+    if(cfg.server && cfg.server.version){
+      document.getElementById('foot-meta').textContent = '服务端 ' + cfg.server.version;
+    }
+
+    /* 状态条 IP 区：hide_ip 为 true 时只显示提示文字，不暴露地址 */
+    if(st.ip){
+      if(cfg.server && cfg.server.hide_ip){
+        st.ip.innerHTML = '<span>' + esc(cfg.server.ip_note || '地址见群公告') + '</span>';
+      } else if(cfg.server && !isPending(cfg.server.java_ip)){
+        st.ip.innerHTML = '<span>地址</span><b style="color:var(--fg)">' + esc(cfg.server.java_ip) + '</b>';
+      } else {
+        st.ip.innerHTML = '<span>' + esc((cfg.server && cfg.server.ip_note) || '地址见群公告') + '</span>';
+      }
+    }
+
+    /* 状态查询：status_api 未配置则不轮询，仅显示版本 */
+    if(cfg.server && !isPending(cfg.server.status_api)){
+      poll(cfg.server.status_api);
+      setInterval(function(){ poll(cfg.server.status_api); }, 30000);
+    } else {
+      setStatus('unknown', {});
+      if(cfg.server && cfg.server.version){
+        st.version.textContent = cfg.server.version;
+        show(st.sep2, true); show(st.version, true);
+      }
+    }
+
+    /* 渲染完再让新元素走进场动画 */
+    refreshRise();
+  }).catch(function(err){
+    setStatus('fail', {});
+    if(st.ip){ st.ip.textContent = 'links.json 读取失败'; }
+    console.error('[windrest]', err);
+  });
+
+})();
+</script>
+</body>
+</html>

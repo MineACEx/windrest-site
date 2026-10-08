@@ -1,0 +1,16 @@
+{
+  "_说明": "★ 你平时只需要改这个文件 ★",
+  "_怎么改": "把 PLACEHOLDER_xxx 换成真实链接即可。只要值以 PLACEHOLDER 开头，页面上那个按钮就是灰色的「待配置」状态。",
+  "下载链接": {
+    "国际线路": "PLACEHOLDER_GLOBAL_DOWNLOAD_URL",
+    "国内线路": "PLACEHOLDER_CHINA_DOWNLOAD_URL"
+  },
+  "QQ群": {
+    "群号": "PLACEHOLDER_QQ_GROUP",
+    "加群链接": "PLACEHOLDER_QQ_JOIN_URL"
+  },
+  "Discord": {
+    "邀请码显示文字": "PLACEHOLDER_DISCORD",
+    "邀请链接": "PLACEHOLDER_DISCORD_URL"
+  }
+}

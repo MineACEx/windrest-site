@@ -1,0 +1,11 @@
+# 临时文件
+_check.js
+_c.js
+_newcss.txt
+_shots/
+*.tmp
+
+# 系统文件
+Thumbs.db
+.DS_Store
+desktop.ini
