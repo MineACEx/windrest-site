@@ -120,7 +120,7 @@ body::after{
    胶囊元素（border-radius:999px）加 corner-shape 后，两端变成超椭圆"帽"。
 */
 .card,.rule,.dl,.step,.statusbar,.eyebrow,.btn,.themebtn,.tag,.ico,.num,
-.nav-links a,code,h1 .g{
+.announce,.ann-head,.ann-body,.nav-links a,code,h1 .g{
   corner-shape:var(--corner-sq);
 }
 .dot{border-radius:50%;corner-shape:var(--corner-sq)}
@@ -287,6 +287,75 @@ section{padding:56px 0}
 .rule h4{font-size:14.5px;font-weight:660;margin-bottom:4px}
 .rule p{color:var(--fg-dim);font-size:13.5px;line-height:1.68}
 
+/* ============ 公告 ============ */
+.announce{
+  position:relative;margin-top:26px;overflow:hidden;
+  border:1px solid var(--line);border-radius:var(--r);
+  background:var(--panel);
+  backdrop-filter:blur(14px) saturate(140%);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);
+  transition:border-color var(--t) var(--ease-soft);
+}
+.announce::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--cyan),var(--blue) 42%,var(--violet));
+  opacity:.9;
+}
+.announce[hidden]{display:none}
+.ann-head{display:flex;align-items:center;gap:10px;padding:16px 20px 0}
+.ann-tag{
+  flex:none;font-size:11px;font-weight:700;letter-spacing:.06em;
+  padding:3px 10px;border-radius:999px;
+  border:1px solid var(--line-hi);color:var(--cyan);
+  corner-shape:var(--corner-sq);
+}
+.ann-title{flex:1;min-width:0;font-size:15px;font-weight:700}
+.ann-toggle{
+  flex:none;width:30px;height:30px;display:grid;place-items:center;
+  border:1px solid var(--line-hi);border-radius:11px;background:transparent;
+  color:var(--fg-dim);cursor:pointer;padding:0;font-size:15px;line-height:1;
+  corner-shape:var(--corner-sq);
+  transition:color var(--t-fast) var(--ease-soft),border-color var(--t-fast) var(--ease-soft),transform var(--t) var(--ease-rebound);
+}
+.ann-toggle:hover{color:var(--fg);border-color:var(--fg-faint)}
+.ann-toggle:active{transform:scale(.94)}
+.ann-body{padding:8px 20px 20px;font-size:14px;line-height:1.78;color:var(--fg-dim)}
+.ann-body>*:first-child{margin-top:2px}
+.ann-body>*:last-child{margin-bottom:0}
+.ann-body h2,.ann-body h3,.ann-body h4,.ann-body h5,.ann-body h6{
+  color:var(--fg);font-weight:700;line-height:1.36;margin:20px 0 8px;
+}
+.ann-body h2{font-size:17.5px}
+.ann-body h3{font-size:15.5px}
+.ann-body h4,.ann-body h5,.ann-body h6{font-size:14.5px}
+.ann-body p{margin:11px 0}
+.ann-body strong{color:var(--fg);font-weight:680}
+.ann-body em{font-style:italic}
+.ann-body a{color:var(--blue);text-decoration:none;border-bottom:1px solid var(--line-hi);transition:border-color var(--t-fast) var(--ease-soft)}
+.ann-body a:hover{border-bottom-color:var(--blue)}
+.ann-body ul,.ann-body ol{margin:11px 0;padding-left:22px}
+.ann-body li{margin:5px 0}
+.ann-body ul li::marker{color:var(--violet)}
+.ann-body ol li::marker{color:var(--violet);font-family:ui-monospace,monospace;font-size:12.5px}
+.ann-body blockquote{
+  margin:13px 0;padding:11px 16px;
+  border-left:2px solid var(--violet);border-radius:0 16px 16px 0;
+  background:var(--panel-hi);color:var(--fg-dim);
+  corner-shape:var(--corner-sq);
+}
+.ann-body blockquote p{margin:0}
+.ann-body hr{border:0;border-top:1px solid var(--line);margin:20px 0}
+.ann-body pre{
+  margin:13px 0;padding:13px 16px;overflow-x:auto;
+  border:1px solid var(--line);border-radius:16px;background:var(--panel-hi);
+  corner-shape:var(--corner-sq);
+}
+.ann-body pre code{
+  display:block;background:none;border:0;padding:0;white-space:pre;
+  font-size:12.5px;line-height:1.72;color:var(--fg);
+}
+.announce[data-collapsed="1"] .ann-body{display:none}
+
 /* ============ 下载 ============ */
 .dl{
   display:flex;align-items:center;gap:16px;
@@ -402,6 +471,16 @@ footer a:hover{color:var(--fg)}
       <a class="btn" href="#download">下载整合包</a>
     </div>
   </div>
+
+  <!-- 公告：内容来自同仓库 announcement.md（Markdown），改文件即改公告 -->
+  <section class="announce rise" id="announce" hidden>
+    <div class="ann-head">
+      <span class="ann-tag" id="ann-tag">公告</span>
+      <span class="ann-title" id="ann-title">服务器公告</span>
+      <button class="ann-toggle" id="ann-toggle" type="button" aria-label="收起或展开公告" title="收起 / 展开">-</button>
+    </div>
+    <div class="ann-body" id="ann-body"></div>
+  </section>
 
   <!-- 关于 -->
   <section id="about">
@@ -714,6 +793,185 @@ footer a:hover{color:var(--fg)}
     });
   }
 
+  /* ---------- 公告：拉取 admission.md 并渲染 Markdown ----------
+     内容源是本站仓库根目录的 announcement.md（单一文件，改完刷新即生效）。
+     不引第三方 Markdown 库：国内 CDN 不稳，自己实现几十行就够用。
+  */
+  function mdEsc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* 行内：先做整体转义，再把安全子集还原成标签 */
+  function mdInline(s){
+    var t = mdEsc(s);
+    /* 行内代码优先摘出来占位，避免里面的字符被后续规则吃掉 */
+    var codes = [];
+    t = t.replace(/`([^`]+)`/g, function(_, c){ codes.push(c); return '\u0000' + (codes.length - 1) + '\u0000'; });
+    /* 图片 ![alt](url) / 链接 [text](url) —— 只放行 http(s)、mailto、锚点和相对路径 */
+    function safeUrl(u){
+      var v = String(u).trim();
+      return /^(https?:|mailto:|#|\.\.?\/|[\w.-]+\/|[\w.-]+\.(md|html|json|png|jpg|jpeg|webp|gif|svg))/i.test(v) ? v : '';
+    }
+    t = t.replace(/!\[([^\]]*)\]\(([^()\s]+)\)/g, function(_, alt, u){
+      var url = safeUrl(u);
+      return url ? '<img src="' + url + '" alt="' + alt + '" loading="lazy">' : alt;
+    });
+    t = t.replace(/\[([^\]]+)\]\(([^()\s]+)\)/g, function(_, txt, u){
+      var url = safeUrl(u);
+      return url ? '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + txt + '</a>' : txt;
+    });
+    /* 粗体 / 斜体 / 删除线 */
+    t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    t = t.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+    t = t.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+    t = t.replace(/(^|[^\w_])_([^_\n]+)_(?![\w_])/g, '$1<em>$2</em>');
+    t = t.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    /* 还原行内代码 */
+    t = t.replace(/\u0000(\d+)\u0000/g, function(_, i){ return '<code>' + codes[+i] + '</code>'; });
+    return t;
+  }
+
+  function mdToHtml(src){
+    var lines = String(src == null ? '' : src).replace(/\r\n?/g, '\n').split('\n');
+    var out = [], i = 0, listType = null, listItems = [], quoteBuf = [];
+
+    function flushList(){
+      if(listType){
+        out.push('<' + listType + '>' + listItems.join('') + '</' + listType + '>');
+        listType = null; listItems = [];
+      }
+    }
+    function flushQuote(){
+      if(quoteBuf.length){
+        out.push('<blockquote>' + mdToHtml(quoteBuf.join('\n')) + '</blockquote>');
+        quoteBuf = [];
+      }
+    }
+    function flushAll(){ flushList(); flushQuote(); }
+
+    while(i < lines.length){
+      var ln = lines[i];
+
+      /* 围栏代码块 */
+      var fence = ln.match(/^\s*```/);
+      if(fence){
+        flushAll();
+        var buf = [];
+        i++;
+        while(i < lines.length && !/^\s*```\s*$/.test(lines[i])){ buf.push(lines[i]); i++; }
+        i++; /* 跳过收尾围栏 */
+        out.push('<pre><code>' + mdEsc(buf.join('\n')) + '</code></pre>');
+        continue;
+      }
+
+      /* 引用 */
+      var qm = ln.match(/^\s*>\s?(.*)$/);
+      if(qm){ flushList(); quoteBuf.push(qm[1]); i++; continue; }
+      flushQuote();
+
+      /* 分隔线 */
+      if(/^\s*([-*_])(\s*\1){2,}\s*$/.test(ln)){ flushList(); out.push('<hr>'); i++; continue; }
+
+      /* 标题 */
+      var hm = ln.match(/^\s*(#{1,6})\s+(.*)$/);
+      if(hm){
+        flushList();
+        var lv = Math.min(6, hm[1].length + 1); /* 井号整体降一级，页面里 h1 是站名 */
+        out.push('<h' + lv + '>' + mdInline(hm[2].replace(/\s+#+\s*$/, '')) + '</h' + lv + '>');
+        i++; continue;
+      }
+
+      /* 列表 */
+      var um = ln.match(/^\s*[-*+]\s+(.*)$/);
+      var om = ln.match(/^\s*\d+[.)]\s+(.*)$/);
+      if(um || om){
+        var want = um ? 'ul' : 'ol';
+        if(listType && listType !== want) flushList();
+        listType = want;
+        listItems.push('<li>' + mdInline((um || om)[1]) + '</li>');
+        i++; continue;
+      }
+
+      /* 空行 */
+      if(/^\s*$/.test(ln)){ flushList(); i++; continue; }
+
+      /* 段落：合并连续的非空行 */
+      flushList();
+      var para = [ln];
+      i++;
+      while(i < lines.length && !/^\s*$/.test(lines[i]) &&
+            !/^\s*(#{1,6}\s|>|[-*+]\s|\d+[.)]\s|```)/.test(lines[i]) &&
+            !/^\s*([-*_])(\s*\1){2,}\s*$/.test(lines[i])){
+        para.push(lines[i]); i++;
+      }
+      out.push('<p>' + mdInline(para.join('<br>').replace(/<br>/g, '\u0001')).replace(/\u0001/g, '<br>') + '</p>');
+    }
+    flushAll();
+    return out.join('');
+  }
+
+  /* 公告内容做指纹：内容变了就重新展开（用户收起过也不会漏掉新公告） */
+  function mdFingerprint(s){
+    var h = 5381;
+    for(var i = 0; i < s.length; i++){ h = ((h << 5) + h + s.charCodeAt(i)) | 0; }
+    return String(h);
+  }
+
+  function renderAnnounce(cfg){
+    var box = document.getElementById('announce');
+    if(!box) return;
+    var conf = (cfg && cfg.announce) || {};
+    if(conf.enabled === false){ box.hidden = true; return; }
+
+    var file = conf.file || 'announcement.md';
+
+    fetch(file, {cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error(file + ' HTTP ' + r.status); return r.text(); })
+      .then(function(md){
+        if(!md || !md.trim()){ box.hidden = true; return; }
+
+        if(conf.label){ var tg = document.getElementById('ann-tag'); if(tg) tg.textContent = conf.label; }
+        var body = document.getElementById('ann-body');
+        body.innerHTML = mdToHtml(md);
+
+        /* 把公告里的代码块也套上 G2 圆角胶囊风格由 CSS 负责，这里只处理标题 */
+        var titleEl = document.getElementById('ann-title');
+        if(titleEl){
+          var first = body.querySelector('h2,h3,h4');
+          if(first){ titleEl.textContent = first.textContent; first.style.display = 'none'; }
+        }
+
+        /* 收起状态记忆：localStorage 存指纹，内容一改就重新展开 */
+        var fp = mdFingerprint(md);
+        try{
+          var closed = localStorage.getItem('wr-ann-closed');
+          if(closed === fp){ box.setAttribute('data-collapsed', '1'); }
+          else { box.removeAttribute('data-collapsed'); }
+        }catch(e){}
+
+        box.hidden = false;
+        if(io) io.observe(box); else box.classList.add('in');
+
+        var btn = document.getElementById('ann-toggle');
+        if(btn && !btn.getAttribute('data-bound')){
+          btn.setAttribute('data-bound', '1');
+          btn.addEventListener('click', function(){
+            var collapsed = box.getAttribute('data-collapsed') === '1';
+            box.setAttribute('data-collapsed', collapsed ? '0' : '1');
+            btn.textContent = collapsed ? '-' : '+';
+          });
+        }
+        if(btn){ btn.textContent = box.getAttribute('data-collapsed') === '1' ? '+' : '-'; }
+      })
+      .catch(function(err){
+        /* 公告文件不存在就直接不显示，不影响页面其它部分 */
+        box.hidden = true;
+        console.warn('[windrest] 公告加载失败：', err);
+      });
+  }
+
   /* ---------- 服务器状态 ---------- */
   var st = {
     dot:      document.getElementById('dot'),
@@ -854,6 +1112,7 @@ footer a:hover{color:var(--fg)}
     renderSectionHead('download', cfg.download);
     renderDownloads(cfg.download ? cfg.download.items : null);
     renderCommunity(cfg);
+    renderAnnounce(cfg);
 
     if(cfg.footer){ setText('foot-left', cfg.footer.left); }
     if(cfg.server && cfg.server.version){

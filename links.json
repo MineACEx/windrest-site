@@ -2,8 +2,9 @@
   "_说明": "★ 你平时只需要改这个文件 ★",
   "_怎么改": "把 PLACEHOLDER_xxx 换成真实链接即可。只要值以 PLACEHOLDER 开头，页面上那个按钮就是灰色的「待配置」状态。",
   "下载链接": {
-    "国际线路": "PLACEHOLDER_GLOBAL_DOWNLOAD_URL",
-    "国内线路": "PLACEHOLDER_CHINA_DOWNLOAD_URL"
+    "国际线路": "https://github.com/MineACEx/windrest-site/releases/download/v1.0.0-alpha/Windrest-Pack-1.0.0-alpha.zip",
+    "国内线路": "https://gh.catmak.name/https://github.com/MineACEx/windrest-site/releases/download/v1.0.0-alpha/Windrest-Pack-1.0.0-alpha.zip",
+    "_说明": "国际线路 = GitHub 原链（海外快）；国内线路 = 同一链接加 gh.catmak.name/ 前缀的加速镜像（国内快）。换新版本时两个都改。"
   },
   "QQ群": {
     "群号": "PLACEHOLDER_QQ_GROUP",

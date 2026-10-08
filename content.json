@@ -115,5 +115,12 @@
   },
   "footer": {
     "left": "风栖原 · Windrest — 半仿 2b2t 无规则生存服"
+  },
+  "announce": {
+    "_说明": "公告内容来自同仓库的 announcement.md（Markdown）。改那个文件 → 刷新页面即可生效，不用动这里。",
+    "enabled": true,
+    "file": "announcement.md",
+    "label": "公告",
+    "close_hint": "本次关闭后不再显示，改动公告内容会重新弹出"
   }
 }
