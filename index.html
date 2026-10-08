@@ -154,17 +154,44 @@ body::after{
 /* ============ 顶部 ============ */
 header{
   position:sticky;top:0;z-index:50;
-  backdrop-filter:blur(18px) saturate(150%);
-  -webkit-backdrop-filter:blur(18px) saturate(150%);
+  backdrop-filter:blur(16px) saturate(170%);
+  -webkit-backdrop-filter:blur(16px) saturate(170%);
   background:var(--head);
   border-bottom:1px solid transparent;
-  transition:border-color var(--t) var(--ease-soft),background var(--t) var(--ease-soft);
+  transition:border-color var(--t) var(--ease-soft),background var(--t) var(--ease-soft),
+             padding var(--t) var(--ease-soft),backdrop-filter var(--t) var(--ease-soft);
 }
-header.scrolled{border-bottom-color:var(--line);background:var(--head-solid)}
-.nav{display:flex;align-items:center;gap:18px;height:64px}
+/* 停在页面最上方：顶栏完全融进背景 —— 透明、无边框、无模糊 */
+header:not(.scrolled){
+  background:transparent;
+  border-bottom-color:transparent;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+/* 向下滚动后：浮起一层，模糊减弱但采样更锐（saturate 拉高让底色更实） */
+header.scrolled{
+  border-bottom-color:var(--line);
+  background:var(--head-solid);
+  /* 模糊半径调低 + 提饱和度/对比度：透出来的底色更实、边缘更锐 */
+  backdrop-filter:blur(10px) saturate(185%) contrast(1.06);
+  -webkit-backdrop-filter:blur(10px) saturate(185%) contrast(1.06);
+}
+.nav{
+  display:flex;align-items:center;gap:18px;
+  height:72px;                      /* 展开态高度 */
+  transition:height 320ms var(--ease-soft);
+}
+/* 停在顶部时收缩：TAB 沉进页面，不占视觉重量 */
+header:not(.scrolled) .nav{height:60px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.2px;font-size:16px;text-decoration:none;color:inherit}
 /* 图标：透明通道，不加框 */
 .brand img{width:32px;height:32px;display:block;object-fit:contain}
+
+/* 顶部沉浸态：品牌与图标同步收缩（放在原规则之后，确保覆盖生效） */
+.brand{transition:font-size 320ms var(--ease-soft),gap 320ms var(--ease-soft)}
+.brand img{transition:width 320ms var(--ease-soft),height 320ms var(--ease-soft)}
+header:not(.scrolled) .brand{font-size:15px;gap:9px}
+header:not(.scrolled) .brand img{width:28px;height:28px}
 .brand .grad{
   background:linear-gradient(96deg,var(--cyan),var(--blue) 42%,var(--violet));
   -webkit-background-clip:text;background-clip:text;color:transparent;
@@ -176,6 +203,11 @@ header.scrolled{border-bottom-color:var(--line);background:var(--head-solid)}
   transition:color var(--t-fast) var(--ease-soft);
 }
 .nav-links a:hover{color:var(--fg)}
+
+/* 顶部沉浸态：导航项同步收缩（放在原规则之后，确保覆盖生效） */
+.nav-links a{transition:color var(--t-fast) var(--ease-soft),padding 320ms var(--ease-soft)}
+header:not(.scrolled) .nav-links a{padding:6px 11px}
+
 /* 主题切换按钮 */
 .themebtn{
   margin-left:6px;width:34px;height:34px;flex:none;
@@ -343,6 +375,11 @@ section{padding:56px 0}
 /* 默认不显示（无 JS 时页面照常显示真实内容） */
 #skeleton{display:none;gap:26px}
 /* 加载中：亮骨架、藏内容 */
+/* 弹窗打开锁滚动时，用 padding 补偿滚动条宽度，避免整页横向位移 */
+html[data-scroll-lock="1"]{padding-right:var(--sb-comp,0px)}
+html[data-scroll-lock="1"] header{width:calc(100% - var(--sb-comp,0px))}
+:root{--sb-comp:0px}
+
 html[data-loading="1"] #skeleton{display:grid}
 html[data-loading="1"] .statusbar,
 html[data-loading="1"] .hero,
@@ -1225,6 +1262,25 @@ footer a:hover{color:var(--fg)}
     try{ if(v){ localStorage.setItem(ANN_KEY, v); } else { localStorage.removeItem(ANN_KEY); } }catch(e){}
   }
 
+  /* 锁滚动：补偿滚动条宽度后隐藏溢出，避免视口变宽导致整页横向一挤。
+     任何环境差异都不该阻断弹窗，所以整段包在 try 里。 */
+  function lockScroll(){
+    try{
+      var el = document.documentElement;
+      var sbw = window.innerWidth - el.clientWidth;
+      if(el.style && el.style.setProperty){ el.style.setProperty('--sb-comp', sbw > 0 ? sbw + 'px' : '0px'); }
+      el.style.overflow = 'hidden';
+      el.setAttribute('data-scroll-lock', '1');
+    }catch(e){}
+  }
+  function unlockScroll(){
+    try{
+      var el = document.documentElement;
+      el.style.overflow = '';
+      el.removeAttribute('data-scroll-lock');
+    }catch(e){}
+  }
+
   function renderAnnounce(cfg){
     var box = document.getElementById('announce');
     if(!box) return;
@@ -1249,12 +1305,14 @@ footer a:hover{color:var(--fg)}
     function openModal(){
       if(opened) return;
       opened = true;
+      lockScroll();
       box.hidden = false;
       /* 下一帧再加打开态，否则同一帧内 opacity 0→1 不产生过渡 */
       requestAnimationFrame(function(){
         requestAnimationFrame(function(){ box.setAttribute('data-open', '1'); });
       });
       document.documentElement.style.overflow = 'hidden';
+      document.documentElement.setAttribute('data-scroll-lock', '1');
       if(okBtn) setTimeout(function(){ okBtn.focus(); }, 380);
     }
 
@@ -1263,7 +1321,7 @@ footer a:hover{color:var(--fg)}
       if(!opened) return;
       opened = false;
       box.removeAttribute('data-open');
-      document.documentElement.style.overflow = '';
+      unlockScroll();
       setTimeout(function(){ if(!opened) box.hidden = true; }, 400);
     }
 
@@ -1303,7 +1361,7 @@ footer a:hover{color:var(--fg)}
         /* 已勾选「不再提示」且内容没变 → 不弹 */
         if(annReadSeen() === fp){
           box.hidden = true;
-          document.documentElement.style.overflow = '';
+          unlockScroll();
           return;
         }
 
@@ -1329,7 +1387,7 @@ footer a:hover{color:var(--fg)}
       })
       .catch(function(err){
         box.hidden = true;
-        document.documentElement.style.overflow = '';
+        unlockScroll();
         console.warn('[windrest] 公告加载失败：', err);
       });
   }
