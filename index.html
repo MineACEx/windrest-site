@@ -30,6 +30,10 @@
     }catch(e){ t = 'dark'; }
   }
   document.documentElement.setAttribute('data-theme', t);
+
+  /* 数据到位前先亮骨架屏：在 CSS 生效前就设标记，避免"内容一闪再变骨架"。
+     若脚本被禁用，这个属性不会存在，页面按正常内容显示。 */
+  document.documentElement.setAttribute('data-loading', '1');
 })();
 </script>
 <style>
@@ -49,6 +53,9 @@
   --panel-modal:rgba(40,45,60,.97);
   --sb-thumb:rgba(255,255,255,.2);
   --sb-thumb-hi:rgba(143,203,255,.55);
+  /* 骨架屏：底块 + 高光条 */
+  --sk-a:rgba(255,255,255,.055);
+  --sk-b:rgba(255,255,255,.13);
   --cyan:#55FFFF;
   --blue:#8FCBFF;
   --violet:#C9A0FF;
@@ -81,6 +88,8 @@
   --panel-modal:rgba(255,255,255,.98);
   --sb-thumb:rgba(14,18,32,.22);
   --sb-thumb-hi:rgba(37,96,184,.6);
+  --sk-a:rgba(14,18,32,.07);
+  --sk-b:rgba(14,18,32,.15);
   --cyan:#0a7c8c;
   --blue:#2560b8;
   --violet:#6b3fd4;
@@ -96,6 +105,14 @@
     radial-gradient(700px 620px at 50% 108%, rgba(255,200,90,.20), transparent 62%);
 }
 *{box-sizing:border-box;margin:0;padding:0;min-width:0}
+/* 去掉浏览器默认的点击高亮与焦点框：
+   移动端 -webkit-tap-highlight-color 会闪一层蓝/灰罩；桌面端 :focus 会画外框。
+   焦点可见性改由各组件自己的 :active / :checked 反馈承担。 */
+*{-webkit-tap-highlight-color:transparent}
+:focus{outline:none}
+/* :focus-visible 只在键盘导航时由浏览器触发，鼠标/触摸点击不会命中，
+   所以这里保留它 —— 鼠标点按钮不再有蓝框，键盘 Tab 仍能看见焦点。 */
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:8px}
 img,svg,video{max-width:100%;height:auto}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{
@@ -293,6 +310,64 @@ section{padding:56px 0}
 .rule div{flex:1}
 .rule h4{font-size:14.5px;font-weight:660;margin-bottom:4px}
 .rule p{color:var(--fg-dim);font-size:13.5px;line-height:1.68}
+
+/* ============ 加载骨架屏 ============
+   数据到位前先撑出与真实内容一致的形状与节奏，
+   避免"白屏 → 内容突然弹出"的跳变。
+   渐变横扫用 background-position 动画：可循环、可中断，不用 keyframes 也能跑
+*/
+.sk{
+  border-radius:12px;
+  background:linear-gradient(100deg,
+    var(--sk-a) 0%, var(--sk-a) 38%,
+    var(--sk-b) 50%,
+    var(--sk-a) 62%, var(--sk-a) 100%);
+  background-size:220% 100%;
+  animation:sk-sweep 1.5s linear infinite;
+}
+@keyframes sk-sweep{
+  from{background-position:180% 0}
+  to  {background-position:-80% 0}
+}
+/* 尊重系统「减少动态效果」：停掉横扫，保留静态占位 */
+@media(prefers-reduced-motion:reduce){
+  .sk{animation:none;background:var(--sk-a)}
+}
+/* 占位元素的尺寸工具类 */
+.sk-line{height:13px;border-radius:7px}
+.sk-line.sm{height:11px}
+.sk-line.lg{height:17px}
+.sk-title{height:26px;border-radius:9px}
+.sk-hero{height:52px;border-radius:14px}
+/* 骨架容器：数据一到就撤掉 */
+/* 默认不显示（无 JS 时页面照常显示真实内容） */
+#skeleton{display:none;gap:26px}
+/* 加载中：亮骨架、藏内容 */
+html[data-loading="1"] #skeleton{display:grid}
+html[data-loading="1"] .statusbar,
+html[data-loading="1"] .hero,
+html[data-loading="1"] #about,
+html[data-loading="1"] #rules,
+html[data-loading="1"] #join,
+html[data-loading="1"] #download,
+html[data-loading="1"] #community,
+html[data-loading="1"] footer,
+html[data-loading="1"] .ann-modal{display:none}
+.sk-card{
+  padding:22px;border-radius:var(--r);
+  border:1px solid var(--line);background:var(--panel);
+}
+.sk-row{display:flex;align-items:center;gap:16px;padding:20px 22px;
+  border-radius:22px;border:1px solid var(--line);background:var(--panel)}
+.sk-icon{width:46px;height:46px;border-radius:15px;flex:none}
+.sk-stack{flex:1;display:grid;gap:9px;min-width:0}
+.sk-pill{width:76px;height:26px;border-radius:999px;flex:none}
+.sk-grid{display:grid;gap:16px;margin-top:18px}
+.sk-grid.g2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.sk-grid.g3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.sk-num{width:28px;height:28px;border-radius:11px;flex:none}
+.sk-step{display:flex;gap:15px;padding:17px 20px;
+  border-radius:20px;border:1px solid var(--line)}
 
 /* ============ 公告弹窗 ============
    压暗遮罩 + 面板：面板用 opacity/transform 做先快后慢微回弹。
@@ -586,6 +661,78 @@ footer a:hover{color:var(--fg)}
 
 <main class="wrap" id="top">
 
+  <!-- 骨架屏：数据到位前撑出与真实内容一致的形状，到位后由 JS 隐藏 -->
+  <div id="skeleton" aria-hidden="true">
+
+    <!-- 状态条 -->
+    <div class="sk-row">
+      <div class="sk sk-line" style="width:8px;height:8px;border-radius:50%"></div>
+      <div class="sk sk-line" style="width:96px"></div>
+      <div class="sk sk-line sm" style="width:72px"></div>
+    </div>
+
+    <!-- 英雄区 -->
+    <div style="display:grid;gap:16px;padding-top:14px">
+      <div class="sk sk-pill"></div>
+      <div class="sk sk-hero" style="width:min(360px,72%)"></div>
+      <div class="sk sk-line lg" style="width:min(300px,58%)"></div>
+      <div style="display:grid;gap:9px;margin-top:6px">
+        <div class="sk sk-line" style="width:100%"></div>
+        <div class="sk sk-line" style="width:92%"></div>
+        <div class="sk sk-line" style="width:78%"></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:6px">
+        <div class="sk" style="width:132px;height:44px;border-radius:17px"></div>
+        <div class="sk" style="width:124px;height:44px;border-radius:17px"></div>
+      </div>
+    </div>
+
+    <!-- 关于：三张卡 -->
+    <div>
+      <div class="sk sk-title" style="width:190px"></div>
+      <div class="sk-grid g3">
+        <div class="sk-card"><div class="sk sk-icon" style="margin-bottom:14px"></div>
+          <div class="sk sk-line" style="width:68%;margin-bottom:10px"></div>
+          <div class="sk sk-line sm" style="width:100%"></div></div>
+        <div class="sk-card"><div class="sk sk-icon" style="margin-bottom:14px"></div>
+          <div class="sk sk-line" style="width:58%;margin-bottom:10px"></div>
+          <div class="sk sk-line sm" style="width:96%"></div></div>
+        <div class="sk-card"><div class="sk sk-icon" style="margin-bottom:14px"></div>
+          <div class="sk sk-line" style="width:74%;margin-bottom:10px"></div>
+          <div class="sk sk-line sm" style="width:88%"></div></div>
+      </div>
+    </div>
+
+    <!-- 规则：两条横卡 -->
+    <div>
+      <div class="sk sk-title" style="width:150px"></div>
+      <div style="display:grid;gap:10px;margin-top:18px">
+        <div class="sk-step"><div class="sk sk-num"></div>
+          <div class="sk-stack"><div class="sk sk-line" style="width:42%"></div>
+          <div class="sk sk-line sm" style="width:92%"></div></div></div>
+        <div class="sk-step"><div class="sk sk-num"></div>
+          <div class="sk-stack"><div class="sk sk-line" style="width:36%"></div>
+          <div class="sk sk-line sm" style="width:86%"></div></div></div>
+      </div>
+    </div>
+
+    <!-- 下载：两行 -->
+    <div>
+      <div class="sk sk-title" style="width:130px"></div>
+      <div class="sk-grid g2">
+        <div class="sk-row"><div class="sk sk-icon"></div>
+          <div class="sk-stack"><div class="sk sk-line" style="width:52%"></div>
+          <div class="sk sk-line sm" style="width:74%"></div></div>
+          <div class="sk sk-pill"></div></div>
+        <div class="sk-row"><div class="sk sk-icon"></div>
+          <div class="sk-stack"><div class="sk sk-line" style="width:46%"></div>
+          <div class="sk sk-line sm" style="width:68%"></div></div>
+          <div class="sk sk-pill"></div></div>
+      </div>
+    </div>
+
+  </div>
+
   <!-- 实时状态 -->
   <div class="statusbar" id="statusbar">
     <span class="dot" id="dot"></span>
@@ -594,7 +741,6 @@ footer a:hover{color:var(--fg)}
     <span id="st-players" hidden></span>
     <span class="sep" id="st-sep2" hidden>·</span>
     <span id="st-version" hidden></span>
-    <span class="iptag" id="st-ip"></span>
   </div>
 
   <!-- 英雄区 -->
@@ -1195,8 +1341,7 @@ footer a:hover{color:var(--fg)}
     sep:      document.getElementById('st-sep'),
     players:  document.getElementById('st-players'),
     sep2:     document.getElementById('st-sep2'),
-    version:  document.getElementById('st-version'),
-    ip:       document.getElementById('st-ip')
+    version:  document.getElementById('st-version')
   };
 
   function show(el, on){ if(el){ el.hidden = !on; } }
@@ -1335,17 +1480,6 @@ footer a:hover{color:var(--fg)}
       document.getElementById('foot-meta').textContent = '服务端 ' + cfg.server.version;
     }
 
-    /* 状态条 IP 区：hide_ip 为 true 时只显示提示文字，不暴露地址 */
-    if(st.ip){
-      if(cfg.server && cfg.server.hide_ip){
-        st.ip.innerHTML = '<span>' + esc(cfg.server.ip_note || '地址见群公告') + '</span>';
-      } else if(cfg.server && !isPending(cfg.server.java_ip)){
-        st.ip.innerHTML = '<span>地址</span><b style="color:var(--fg)">' + esc(cfg.server.java_ip) + '</b>';
-      } else {
-        st.ip.innerHTML = '<span>' + esc((cfg.server && cfg.server.ip_note) || '地址见群公告') + '</span>';
-      }
-    }
-
     /* 状态查询：地址从混淆字段解析，解析不出则只显示版本 */
     var apiUrl = resolveApi(cfg.server);
     if(apiUrl){
@@ -1359,11 +1493,16 @@ footer a:hover{color:var(--fg)}
       }
     }
 
+    /* 数据到位：撤掉骨架屏，让真实内容接管 */
+    document.documentElement.removeAttribute('data-loading');
+
     /* 渲染完再让新元素走进场动画 */
     refreshRise();
   }).catch(function(err){
+    /* 出错也要撤骨架，否则页面永远停在占位状态 */
+    document.documentElement.removeAttribute('data-loading');
     setStatus('fail', {});
-    if(st.ip){ st.ip.textContent = 'links.json 读取失败'; }
+    st.text.textContent = '页面配置读取失败';
     console.error('[windrest]', err);
   });
 
