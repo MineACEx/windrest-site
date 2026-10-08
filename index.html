@@ -961,6 +961,11 @@ footer a:hover{color:var(--fg)}
             var collapsed = box.getAttribute('data-collapsed') === '1';
             box.setAttribute('data-collapsed', collapsed ? '0' : '1');
             btn.textContent = collapsed ? '-' : '+';
+            /* 记住收起动作：内容不变就保持收起；公告一改（指纹变）自动重新展开 */
+            try{
+              if(collapsed){ localStorage.removeItem('wr-ann-closed'); }
+              else { localStorage.setItem('wr-ann-closed', fp); }
+            }catch(e){}
           });
         }
         if(btn){ btn.textContent = box.getAttribute('data-collapsed') === '1' ? '+' : '-'; }

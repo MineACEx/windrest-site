@@ -121,6 +121,6 @@
     "enabled": true,
     "file": "announcement.md",
     "label": "公告",
-    "close_hint": "本次关闭后不再显示，改动公告内容会重新弹出"
+    "close_hint": "点右上角减号可收起；公告内容一改动，页面会自动重新展开。"
   }
 }
