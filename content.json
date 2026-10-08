@@ -8,8 +8,15 @@
     "max_players": 100,
     "hide_ip": true,
     "ip_note": "地址见群公告",
-    "status_api": "https://api.mcstatus.io/v2/status/java/p4.ntol.cc:40111",
-    "_status_api_说明": "mcstatus.io 接口，能拿到 MOTD 与服务器图标（base64）。填 PLACEHOLDER 则状态条显示「状态未公开查询」。"
+    "_status_api_说明": "mcstatus.io 接口，能拿到 MOTD 与服务器图标（base64）。填 PLACEHOLDER 则状态条显示「状态未公开查询」。",
+    "status_enc": {
+      "_说明": "服务器地址经过 Base64 拆分，避免明文 IP 出现在公开仓库里被爬虫扫到。改地址：把新地址拆两段，分别用 base64 编码后填进 host 数组。",
+      "api": "https://api.mcstatus.io/v2/status/java/",
+      "host": [
+        "cDQubnRvbA==",
+        "LmNjOjQwMTEx"
+      ]
+    }
   },
   "hero": {
     "lead": "这是一个<strong>半仿 2b2t</strong> 的生存服务器。地图没有边界保护、没有领地锁、没有管理员来管你建什么。<strong>想做什么都可以</strong> —— 造城、挖穿基岩层、拉帮结派、开战、背叛，都是这个世界的一部分。唯一的两条底线：<strong>不许作弊，不许攻击服务器</strong>。"

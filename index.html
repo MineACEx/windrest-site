@@ -587,6 +587,24 @@ footer a:hover{color:var(--fg)}
     });
   }
 
+  /* ---------- 地址解码（避免明文 IP 出现在公开仓库）----------
+     仓库里的 host 是 Base64 片段，运行时拼接成真实地址。
+     注意：这只能挡住「翻文件」和「自动扫库」，挡不住开 F12 看网络请求。
+  */
+  function decB64(b64){
+    try{ return atob(String(b64)); }catch(e){ return ''; }
+  }
+  function resolveApi(server){
+    if(!server) return null;
+    /* 兼容明文写法 */
+    if(server.status_api && !isPending(server.status_api)){ return server.status_api; }
+    var s = server.status_enc;
+    if(!s || !s.api || !Array.isArray(s.host)) return null;
+    var host = s.host.map(decB64).join('');
+    if(!host) return null;
+    return s.api + host;
+  }
+
   /* 是否待配置（值以 PLACEHOLDER 开头） */
   function isPending(v){
     return !v || String(v).indexOf('PLACEHOLDER') === 0;
@@ -853,10 +871,11 @@ footer a:hover{color:var(--fg)}
       }
     }
 
-    /* 状态查询：status_api 未配置则不轮询，仅显示版本 */
-    if(cfg.server && !isPending(cfg.server.status_api)){
-      poll(cfg.server.status_api);
-      setInterval(function(){ poll(cfg.server.status_api); }, 30000);
+    /* 状态查询：地址从混淆字段解析，解析不出则只显示版本 */
+    var apiUrl = resolveApi(cfg.server);
+    if(apiUrl){
+      poll(apiUrl);
+      setInterval(function(){ poll(apiUrl); }, 30000);
     } else {
       setStatus('unknown', {});
       if(cfg.server && cfg.server.version){
