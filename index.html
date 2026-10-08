@@ -287,39 +287,92 @@ section{padding:56px 0}
 .rule h4{font-size:14.5px;font-weight:660;margin-bottom:4px}
 .rule p{color:var(--fg-dim);font-size:13.5px;line-height:1.68}
 
-/* ============ 公告 ============ */
-.announce{
-  position:relative;margin-top:26px;overflow:hidden;
-  border:1px solid var(--line);border-radius:var(--r);
-  background:var(--panel);
-  backdrop-filter:blur(14px) saturate(140%);
-  -webkit-backdrop-filter:blur(14px) saturate(140%);
-  transition:border-color var(--t) var(--ease-soft);
+/* ============ 公告弹窗 ============
+   压暗遮罩 + 面板：面板用 opacity/transform 做先快后慢微回弹。
+   只用 transition（可打断），不用 keyframes —— 关闭中途再打开能从中断点继续。
+*/
+.ann-modal{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:20px}
+.ann-modal[hidden]{display:none}
+/* 遮罩：压暗背后的页面 */
+.ann-mask{
+  position:absolute;inset:0;cursor:pointer;
+  background:rgba(4,5,9,.62);
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  opacity:0;transition:opacity 240ms var(--ease-soft);
 }
-.announce::before{
-  content:"";position:absolute;top:0;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,var(--cyan),var(--blue) 42%,var(--violet));
-  opacity:.9;
+[data-theme="light"] .ann-mask{background:rgba(22,28,44,.42)}
+/* 面板 */
+.ann-panel{
+  position:relative;width:100%;max-width:520px;max-height:80vh;
+  display:flex;flex-direction:column;
+  border:1px solid var(--line-hi);border-radius:var(--r);
+  background:var(--panel-hi);
+  backdrop-filter:blur(22px) saturate(160%);
+  -webkit-backdrop-filter:blur(22px) saturate(160%);
+  box-shadow:0 24px 70px -22px rgba(0,0,0,.65);
+  opacity:0;transform:translateY(14px) scale(.965);
+  transition:opacity 240ms var(--ease-soft),transform 380ms var(--ease-rebound);
 }
-.announce[hidden]{display:none}
-.ann-head{display:flex;align-items:center;gap:10px;padding:16px 20px 0}
+/* 打开态 */
+.ann-modal[data-open="1"] .ann-mask{opacity:1}
+.ann-modal[data-open="1"] .ann-panel{opacity:1;transform:none}
+.ann-head{
+  display:flex;align-items:center;gap:10px;
+  padding:19px 21px 13px;border-bottom:1px solid var(--line);flex:none;
+}
 .ann-tag{
   flex:none;font-size:11px;font-weight:700;letter-spacing:.06em;
   padding:3px 10px;border-radius:999px;
   border:1px solid var(--line-hi);color:var(--cyan);
   corner-shape:var(--corner-sq);
 }
-.ann-title{flex:1;min-width:0;font-size:15px;font-weight:700}
+.ann-title{flex:1;min-width:0;font-size:15.5px;font-weight:700}
 .ann-toggle{
   flex:none;width:30px;height:30px;display:grid;place-items:center;
   border:1px solid var(--line-hi);border-radius:11px;background:transparent;
   color:var(--fg-dim);cursor:pointer;padding:0;font-size:15px;line-height:1;
   corner-shape:var(--corner-sq);
-  transition:color var(--t-fast) var(--ease-soft),border-color var(--t-fast) var(--ease-soft),transform var(--t) var(--ease-rebound);
+  transition:color var(--t-fast) var(--ease-soft),border-color var(--t-fast) var(--ease-soft),transform 180ms var(--ease-rebound);
 }
 .ann-toggle:hover{color:var(--fg);border-color:var(--fg-faint)}
-.ann-toggle:active{transform:scale(.94)}
-.ann-body{padding:8px 20px 20px;font-size:14px;line-height:1.78;color:var(--fg-dim)}
+.ann-toggle:active{transform:scale(.92)}
+/* 正文：自身滚动，超出不撑破面板 */
+.ann-scroll{overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0}
+/* 底部操作条 */
+.ann-foot{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 21px 18px;border-top:1px solid var(--line);flex:none;
+}
+.ann-noask{
+  flex:1;min-width:0;display:flex;align-items:center;gap:9px;
+  font-size:13px;color:var(--fg-dim);cursor:pointer;user-select:none;
+}
+.ann-noask input{
+  appearance:none;-webkit-appearance:none;flex:none;
+  width:17px;height:17px;margin:0;cursor:pointer;
+  border:1px solid var(--line-hi);border-radius:6px;background:transparent;
+  corner-shape:var(--corner-sq);
+  transition:border-color var(--t-fast) var(--ease-soft),background var(--t-fast) var(--ease-soft);
+}
+.ann-noask input:hover{border-color:var(--fg-faint)}
+.ann-noask input:checked{
+  background:linear-gradient(96deg,rgba(85,255,255,.5),rgba(201,160,255,.5));
+  border-color:rgba(143,203,255,.55);
+}
+.ann-noask input:active{transform:scale(.92)}
+.ann-close{
+  flex:none;display:inline-flex;align-items:center;gap:7px;
+  padding:9px 20px;border-radius:15px;
+  border:1px solid rgba(143,203,255,.4);
+  background:linear-gradient(96deg,rgba(85,255,255,.16),rgba(201,160,255,.16));
+  color:var(--fg);font-size:13.5px;font-weight:660;font-family:inherit;cursor:pointer;
+  corner-shape:var(--corner-sq);
+  transition:border-color var(--t) var(--ease-soft),background var(--t) var(--ease-soft),
+             transform 180ms var(--ease-rebound);
+}
+.ann-close:hover{border-color:rgba(143,203,255,.68);background:linear-gradient(96deg,rgba(85,255,255,.24),rgba(201,160,255,.24))}
+.ann-close:active{transform:scale(.96)}
+.ann-body{padding:17px 21px;font-size:14px;line-height:1.78;color:var(--fg-dim)}
 .ann-body>*:first-child{margin-top:2px}
 .ann-body>*:last-child{margin-bottom:0}
 .ann-body h2,.ann-body h3,.ann-body h4,.ann-body h5,.ann-body h6{
@@ -354,7 +407,7 @@ section{padding:56px 0}
   display:block;background:none;border:0;padding:0;white-space:pre;
   font-size:12.5px;line-height:1.72;color:var(--fg);
 }
-.announce[data-collapsed="1"] .ann-body{display:none}
+/* 弹窗打开时锁滚动由 JS 处理 */
 
 /* ============ 下载 ============ */
 .dl{
@@ -377,6 +430,55 @@ section{padding:56px 0}
 .dl[data-pending="1"]{opacity:.6;cursor:not-allowed}
 .dl[data-pending="1"]:hover{border-color:var(--line)}
 .dl[data-pending="1"]:hover .arrow{transform:none;color:var(--fg-faint)}
+
+/* ============ 下载按钮专属（只作用于「下载」区的卡片，社区卡片不受影响）============
+   柔性反馈：按压收缩、松手回弹（替代原来的箭头位移）
+*/
+.dl[data-dl="1"]{
+  transition:border-color var(--t) var(--ease-soft),background var(--t) var(--ease-soft),
+             transform 190ms var(--ease-rebound);
+}
+.dl[data-dl="1"]:hover{background:var(--panel-hi)}
+.dl[data-dl="1"]:active{transform:scale(.978)}
+.dl[data-dl="1"] .arrow{transition:color var(--t-fast) var(--ease-soft)}
+.dl[data-dl="1"]:hover .arrow{transform:none}
+/* 平台徽标 */
+.dl[data-dl="1"] .plat{
+  flex:none;width:46px;height:46px;border-radius:15px;
+  display:grid;place-items:center;
+  border:1px solid var(--line-hi);color:var(--blue);
+  background:linear-gradient(150deg,rgba(143,203,255,.13),rgba(201,160,255,.09));
+  corner-shape:var(--corner-sq);
+  transition:border-color var(--t) var(--ease-soft);
+}
+.dl[data-dl="1"] .plat svg{width:21px;height:21px;display:block}
+.dl[data-dl="1"]:hover .plat{border-color:rgba(143,203,255,.42)}
+/* 下载动作按钮：hover 点亮作交互指引 */
+.dl[data-dl="1"] .get{
+  flex:none;display:inline-flex;align-items:center;gap:7px;
+  padding:10px 17px;border-radius:15px;
+  border:1px solid rgba(143,203,255,.32);
+  background:linear-gradient(96deg,rgba(85,255,255,.12),rgba(201,160,255,.12));
+  font-size:13.5px;font-weight:660;color:var(--fg);
+  corner-shape:var(--corner-sq);
+  transition:border-color var(--t) var(--ease-soft),background var(--t) var(--ease-soft),
+             box-shadow var(--t) var(--ease-soft);
+}
+.dl[data-dl="1"] .get svg{width:15px;height:15px;display:block}
+.dl[data-dl="1"]:hover .get{
+  border-color:rgba(143,203,255,.58);
+  background:linear-gradient(96deg,rgba(85,255,255,.2),rgba(201,160,255,.2));
+  box-shadow:0 6px 22px -9px rgba(143,203,255,.5);
+}
+.dl[data-dl="1"][data-pending="1"]:hover{background:var(--panel)}
+.dl[data-dl="1"][data-pending="1"] .get{border-color:var(--line-hi);background:transparent;color:var(--fg-faint)}
+.dl[data-dl="1"][data-pending="1"]:hover .plat{border-color:var(--line-hi)}
+.dl[data-dl="1"][data-pending="1"]:hover .get{box-shadow:none}
+@media(max-width:560px){
+  .dl[data-dl="1"]{flex-wrap:wrap;gap:14px}
+  .dl[data-dl="1"] .get{width:100%;justify-content:center;order:3}
+  .dl[data-dl="1"] .tag{order:2}
+}
 
 /* ============ 步骤 ============ */
 .steps{counter-reset:s;display:grid;gap:10px}
@@ -472,15 +574,22 @@ footer a:hover{color:var(--fg)}
     </div>
   </div>
 
-  <!-- 公告：内容来自同仓库 announcement.md（Markdown），改文件即改公告 -->
-  <section class="announce rise" id="announce" hidden>
-    <div class="ann-head">
-      <span class="ann-tag" id="ann-tag">公告</span>
-      <span class="ann-title" id="ann-title">服务器公告</span>
-      <button class="ann-toggle" id="ann-toggle" type="button" aria-label="收起或展开公告" title="收起 / 展开">-</button>
+  <!-- 公告弹窗：内容来自同仓库 announcement.md（Markdown），改文件即改公告 -->
+  <div class="ann-modal" id="announce" hidden role="dialog" aria-modal="true" aria-labelledby="ann-title">
+    <div class="ann-mask" id="ann-mask"></div>
+    <div class="ann-panel">
+      <div class="ann-head">
+        <span class="ann-tag" id="ann-tag">公告</span>
+        <span class="ann-title" id="ann-title">服务器公告</span>
+        <button class="ann-toggle" id="ann-close-x" type="button" aria-label="关闭公告" title="关闭">&#10005;</button>
+      </div>
+      <div class="ann-scroll"><div class="ann-body" id="ann-body"></div></div>
+      <div class="ann-foot">
+        <label class="ann-noask"><input type="checkbox" id="ann-noask"> 不再提示</label>
+        <button class="ann-close" id="ann-ok" type="button">知道了</button>
+      </div>
     </div>
-    <div class="ann-body" id="ann-body"></div>
-  </section>
+  </div>
 
   <!-- 关于 -->
   <section id="about">
@@ -628,6 +737,10 @@ footer a:hover{color:var(--fg)}
       });
   };
 
+  /* 下载图标：内联 SVG，用 currentColor 自动跟随明暗主题 */
+  var ICON_DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                '<path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/></svg>';
+
   /* ---------- 渲染下载区 ---------- */
   function renderDownloads(dls){
     var box = document.getElementById('dl-list');
@@ -640,10 +753,14 @@ footer a:hover{color:var(--fg)}
       a.href = pending ? 'javascript:void(0)' : d.url;
       if(!pending){ a.target = '_blank'; a.rel = 'noopener noreferrer'; }
       a.setAttribute('data-pending', pending ? '1' : '0');
+      a.setAttribute('data-dl', '1');
       a.innerHTML =
+        '<span class="plat" aria-hidden="true">' + (ICON_DL) + '</span>' +
         '<div class="meta"><b>' + esc(d.label) + '</b><span>' + esc(d.desc||'') + '</span></div>' +
         (d.tag ? '<span class="tag">' + esc(d.tag) + '</span>' : '') +
-        '<span class="arrow">' + (pending ? '待配置' : '↓') + '</span>';
+        (pending
+          ? '<span class="arrow">待配置</span>'
+          : '<span class="get">' + (ICON_DL) + '下载</span>');
       box.appendChild(a);
       if('IntersectionObserver' in window) io.observe(a); else a.classList.add('in');
       /* 动态生成的胶囊也要套 G2 */
@@ -919,13 +1036,56 @@ footer a:hover{color:var(--fg)}
     return String(h);
   }
 
+  var ANN_KEY = 'wr-ann-seen';   /* 记住「看过的公告版本」*/
+
+  function annReadSeen(){
+    try{ return localStorage.getItem(ANN_KEY) || ''; }catch(e){ return ''; }
+  }
+  function annWriteSeen(v){
+    try{ if(v){ localStorage.setItem(ANN_KEY, v); } else { localStorage.removeItem(ANN_KEY); } }catch(e){}
+  }
+
   function renderAnnounce(cfg){
     var box = document.getElementById('announce');
     if(!box) return;
     var conf = (cfg && cfg.announce) || {};
     if(conf.enabled === false){ box.hidden = true; return; }
 
-    var file = conf.file || 'announcement.md';
+    var file    = conf.file || 'announcement.md';
+    var noaskTx = conf.noask_label || '不再提示';
+    var okTx    = conf.ok_label || '知道了';
+
+    var panel   = box.querySelector('.ann-panel');
+    var mask    = document.getElementById('ann-mask');
+    var bodyEl  = document.getElementById('ann-body');
+    var xBtn    = document.getElementById('ann-close-x');
+    var okBtn   = document.getElementById('ann-ok');
+    var noask   = document.getElementById('ann-noask');
+    var opened  = false;
+    var fp      = '';   /* 当前公告指纹，随内容更新 */
+    var bindCb  = null; /* 关窗回调：读的是最新 fp，不会被首次绑定固化 */
+
+    /* 打开：先显示再切 data-open，transition 才有起点（跟手、可打断） */
+    function openModal(){
+      if(opened) return;
+      opened = true;
+      box.hidden = false;
+      /* 下一帧再加打开态，否则同一帧内 opacity 0→1 不产生过渡 */
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){ box.setAttribute('data-open', '1'); });
+      });
+      document.documentElement.style.overflow = 'hidden';
+      if(okBtn) setTimeout(function(){ okBtn.focus(); }, 380);
+    }
+
+    /* 关闭：从当前状态反向过渡，先淡出再隐藏，不突变 */
+    function closeModal(){
+      if(!opened) return;
+      opened = false;
+      box.removeAttribute('data-open');
+      document.documentElement.style.overflow = '';
+      setTimeout(function(){ if(!opened) box.hidden = true; }, 400);
+    }
 
     fetch(file, {cache:'no-store'})
       .then(function(r){ if(!r.ok) throw new Error(file + ' HTTP ' + r.status); return r.text(); })
@@ -933,46 +1093,63 @@ footer a:hover{color:var(--fg)}
         if(!md || !md.trim()){ box.hidden = true; return; }
 
         if(conf.label){ var tg = document.getElementById('ann-tag'); if(tg) tg.textContent = conf.label; }
-        var body = document.getElementById('ann-body');
-        body.innerHTML = mdToHtml(md);
+        if(noask){
+          var lab = noask.parentNode;
+          if(lab){
+            /* label 里 input 之后是文本节点，直接改它，避免多出子元素 */
+            if(lab.lastChild && lab.lastChild.nodeType === 3){ lab.lastChild.nodeValue = ' ' + noaskTx; }
+            else { lab.appendChild(document.createTextNode(' ' + noaskTx)); }
+          }
+        }
+        if(okBtn) okBtn.textContent = okTx;
+        if(xBtn)  xBtn.innerHTML = '&#10005;';
 
-        /* 把公告里的代码块也套上 G2 圆角胶囊风格由 CSS 负责，这里只处理标题 */
+        /* 公告源里第一个 # 标题升格为弹窗标题，并从正文里摘掉（避免重复显示）
+           纯字符串处理，不依赖 DOM 查询能力 */
         var titleEl = document.getElementById('ann-title');
-        if(titleEl){
-          var first = body.querySelector('h2,h3,h4');
-          if(first){ titleEl.textContent = first.textContent; first.style.display = 'none'; }
+        var titleTx = conf.title || '服务器公告';
+        var bodyMd  = md;
+        var hm = bodyMd.match(/^[ \t]{0,3}#{1,6}[ \t]+(.+?)[ \t]*$/m);
+        if(hm){
+          titleTx = hm[1].replace(/[ \t]+#+[ \t]*$/, '').trim();
+          bodyMd  = bodyMd.replace(hm[0], '');
+        }
+        bodyEl.innerHTML = mdToHtml(bodyMd);
+        if(titleEl) titleEl.textContent = titleTx;
+
+        /* 版本指纹：内容一改指纹就变 → 会重新弹 */
+        fp = mdFingerprint(md.trim());
+
+        /* 已勾选「不再提示」且内容没变 → 不弹 */
+        if(annReadSeen() === fp){
+          box.hidden = true;
+          document.documentElement.style.overflow = '';
+          return;
         }
 
-        /* 收起状态记忆：localStorage 存指纹，内容一改就重新展开 */
-        var fp = mdFingerprint(md);
-        try{
-          var closed = localStorage.getItem('wr-ann-closed');
-          if(closed === fp){ box.setAttribute('data-collapsed', '1'); }
-          else { box.removeAttribute('data-collapsed'); }
-        }catch(e){}
+        /* 关窗：勾了「不再提示」就记住当前版本；没勾只关这次，刷新还会弹 */
+        bindCb = function(){
+          if(noask && noask.checked){ annWriteSeen(fp); }
+          closeModal();
+        };
 
-        box.hidden = false;
-        if(io) io.observe(box); else box.classList.add('in');
-
-        var btn = document.getElementById('ann-toggle');
-        if(btn && !btn.getAttribute('data-bound')){
-          btn.setAttribute('data-bound', '1');
-          btn.addEventListener('click', function(){
-            var collapsed = box.getAttribute('data-collapsed') === '1';
-            box.setAttribute('data-collapsed', collapsed ? '0' : '1');
-            btn.textContent = collapsed ? '-' : '+';
-            /* 记住收起动作：内容不变就保持收起；公告一改（指纹变）自动重新展开 */
-            try{
-              if(collapsed){ localStorage.removeItem('wr-ann-closed'); }
-              else { localStorage.setItem('wr-ann-closed', fp); }
-            }catch(e){}
+        /* 事件只绑一次；回调读 bindCb，永远指向最新一次加载的指纹 */
+        if(!box.getAttribute('data-bound')){
+          box.setAttribute('data-bound', '1');
+          var fire = function(){ if(bindCb) bindCb(); };
+          if(okBtn)  okBtn.addEventListener('click', fire);
+          if(xBtn)   xBtn.addEventListener('click', fire);
+          if(mask)   mask.addEventListener('click', fire);
+          addEventListener('keydown', function(ev){
+            if(ev.key === 'Escape' && opened){ fire(); }
           });
         }
-        if(btn){ btn.textContent = box.getAttribute('data-collapsed') === '1' ? '+' : '-'; }
+
+        openModal();
       })
       .catch(function(err){
-        /* 公告文件不存在就直接不显示，不影响页面其它部分 */
         box.hidden = true;
+        document.documentElement.style.overflow = '';
         console.warn('[windrest] 公告加载失败：', err);
       });
   }

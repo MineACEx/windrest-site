@@ -121,6 +121,9 @@
     "enabled": true,
     "file": "announcement.md",
     "label": "公告",
-    "close_hint": "点右上角减号可收起；公告内容一改动，页面会自动重新展开。"
+    "title": "服务器公告",
+    "ok_label": "知道了",
+    "noask_label": "不再提示",
+    "_行为": "弹窗式：打开压暗背景。勾「不再提示」并关闭后记住当前内容版本；announcement.md 一旦改动，指纹变化，下次进站会重新弹出。"
   }
 }
